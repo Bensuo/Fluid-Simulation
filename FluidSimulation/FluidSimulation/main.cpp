@@ -1,4 +1,6 @@
 #include <glm/glm.hpp>
+#include <SDL.h>
+#undef main
 #include <iostream>
 
 using namespace std;
@@ -33,14 +35,14 @@ FluidCube *FluidCubeCreate(int size, int diffusion, int viscosity, float dt){
 	fluidCube->diff = diffusion;
 	fluidCube->visc = viscosity;
 
-	fluidCube->s = new float[(N+2) * (N + 2)];
-	fluidCube->density = new float[(N + 2) * (N + 2)];
+	fluidCube->s = new float[(N + 2) * (N + 2)]();
+	fluidCube->density = new float[(N + 2) * (N + 2)]();
 
-	fluidCube->Vx = new float[(N + 2) * (N + 2)];
-	fluidCube->Vy = new float[(N + 2) * (N + 2)];
+	fluidCube->Vx = new float[(N + 2) * (N + 2)]();
+	fluidCube->Vy = new float[(N + 2) * (N + 2)]();
 
-	fluidCube->Vx0 = new float[(N + 2) * (N + 2)];
-	fluidCube->Vy0 = new float[(N + 2) * (N + 2)];
+	fluidCube->Vx0 = new float[(N + 2) * (N + 2)]();
+	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
 	return fluidCube;
 }
@@ -228,7 +230,30 @@ void add_source(int N, float * x, float * s, float dt) {
 
 }
 
+const int SCREEN_WIDTH = 1280;
+const int SCREEN_HEIGHT = 720;
+SDL_Window* gWindow = NULL;
+
 int main()
 {
+	SDL_Init(SDL_INIT_VIDEO);
+	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	FluidCube * fluidCube = FluidCubeCreate(10, 1, 1, float(1/20.0f));
+	for (int i = 0; i < 10; i++)
+	{
+		FluidCubeAddVelocity(fluidCube, i, i, i, i);
+	}
+	bool running = true; // set running to true
+
+	SDL_Event sdlEvent;  // variable to detect SDL events
+	while (running) {	// the event loop
+		while (SDL_PollEvent(&sdlEvent)) {
+			if (sdlEvent.type == SDL_QUIT)
+				running = false;
+		}
+	//TODO: Some timestep stuff
+		FluidCubeTimeStep(fluidCube);
+		
+	}
 	return 0; 
 }
