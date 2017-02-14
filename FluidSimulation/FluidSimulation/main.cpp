@@ -1,8 +1,11 @@
 #include <glm/glm.hpp>
 #include <SDL.h>
+#include <SDL_ttf.h>
 #undef main
 #include <iostream>
-
+#include <string>
+#include <sstream>
+#include <iomanip>
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y))
@@ -230,18 +233,50 @@ void add_source(int N, float * x, float * s, float dt) {
 
 }
 
+std::string ValuesToText(FluidCube* fluidCube)
+{
+	std::string value = "";
+	stringstream ss;
+	ss << fixed << setprecision(2);
+	int N = fluidCube->size;
+	for (int i = 0; i < N; i++)
+	{
+		for (int j = 0; j < N; j++)
+		{
+			
+			ss << fluidCube->Vx[IX(i, j)] << " ";
+			
+		}
+		ss << '\n';
+	}
+	value = ss.str();
+	return value;
+}
+
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 SDL_Window* gWindow = NULL;
+SDL_Renderer* gRenderer = NULL;
+TTF_Font* gFont = NULL;
+
 
 int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
+	TTF_Init();
+	gFont = TTF_OpenFont("Verdana.ttf", 24);
+	SDL_Color White = { 0, 0, 0 };
 	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
-	FluidCube * fluidCube = FluidCubeCreate(10, 1, 1, float(1/20.0f));
+	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
+	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
+	FluidCube * fluidCube = FluidCubeCreate(10, 100, 100, float(1/20.0f));
 	for (int i = 0; i < 10; i++)
 	{
-		FluidCubeAddVelocity(fluidCube, i, i, i, i);
+		for (int j = 0; j < 10; j++)
+		{
+			FluidCubeAddVelocity(fluidCube, i, j, i * 100, j * 100);
+		}
+		
 	}
 	bool running = true; // set running to true
 
@@ -253,7 +288,19 @@ int main()
 		}
 	//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
-		
+
+		//TODO: Proper drawing code
+		SDL_RenderClear(gRenderer);
+		string output = ValuesToText(fluidCube);
+		SDL_Surface* textSurface = TTF_RenderText_Blended_Wrapped(gFont, output.c_str(), White, SCREEN_WIDTH);
+		SDL_Texture* text = SDL_CreateTextureFromSurface(gRenderer, textSurface);
+		int text_width = textSurface->w;
+		int text_height = textSurface->h;
+		SDL_FreeSurface(textSurface);
+		SDL_Rect textQuad = { 20, 30, text_width, text_height };
+		SDL_RenderCopy(gRenderer, text, NULL, &textQuad);
+		SDL_RenderPresent(gRenderer);
+		SDL_DestroyTexture(text);
 	}
 	return 0; 
 }
