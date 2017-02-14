@@ -218,12 +218,12 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	diffuse(N, 1, Vx, Vx0, diff, dt);
 	diffuse(N, 2, Vy, Vy0, diff, dt);
 
-	project(N, Vx0, Vy0, Vx, Vy);
+	project(N, Vx, Vy, Vx0, Vy0);
 
 	advect(N, 1, Vx, Vx0, Vx0, Vy0, dt);
 	advect(N, 2, Vy, Vy0, Vx0, Vy0, dt);
 
-	project(N, Vx, Vy, Vx0, Vy0);
+	project(N, Vx0, Vy0, Vx, Vy);
 
 	diffuse(N, 0, s, density, diff, dt);
 	advect(N, 0, density, s, Vx, Vy, dt);
@@ -264,15 +264,15 @@ int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
-	gFont = TTF_OpenFont("Verdana.ttf", 24);
+	gFont = TTF_OpenFont("Verdana.ttf", 4);
 	SDL_Color White = { 0, 0, 0 };
 	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	FluidCube * fluidCube = FluidCubeCreate(10, 100, 100, float(1/20.0f));
-	for (int i = 0; i < 10; i++)
+	FluidCube * fluidCube = FluidCubeCreate(50, 10, 10, float(1/1000.0f));
+	for (int i = 0; i < 50; i++)
 	{
-		for (int j = 0; j < 10; j++)
+		for (int j = 0; j < 50; j++)
 		{
 			FluidCubeAddVelocity(fluidCube, i, j, i * 100, j * 100);
 		}
