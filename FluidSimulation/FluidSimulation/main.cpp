@@ -29,7 +29,7 @@ struct FluidCube{
 };
 typedef struct FluidCube FluidCube; // Ask Marco
 
-FluidCube *FluidCubeCreate(int size, int diffusion, int viscosity, float dt){
+FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt){
 	FluidCube *fluidCube = new FluidCube;
 	int N = size;
 
@@ -53,7 +53,7 @@ FluidCube *FluidCubeCreate(int size, int diffusion, int viscosity, float dt){
 // Add Density (Dye)
 void fluidCubeAddDensity(FluidCube *fluidCube, int x, int y, float amount) {
 	int N = fluidCube->size;
-	fluidCube->density[IX(x, y)] += amount;
+	fluidCube->s[IX(x, y)] += amount;
 }
 
 //Add Velocity
@@ -137,7 +137,7 @@ void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 			i0 = (int)x;
 			i1 = i0 + 1;
 
-			if (y > 0.5) {
+			if (y < 0.5) {
 				y = 0.5;
 			}
 
@@ -202,6 +202,25 @@ void project(int N, float *u, float *v, float *p, float *div) { //what is p?
 	set_bnd(1, u, N);
 	set_bnd(2, v, N);
 }
+void add_source(int N, float * x, float * s, float dt) {
+	int i, size = (N + 2) * (N + 2);
+	for (i = 0; i < size; i++)
+	{
+		x[i] += dt*s[i];
+	}
+
+}
+
+void getForces(int N, float * s, float * Vx0, float * Vy0)
+{
+	int i, size = (N + 2) * (N + 2);
+	for (i = 0; i < size; i++)
+	{
+		s[i] = 0;
+		Vx0[i] = 0;
+		Vy0[i] = 10.0f;
+	}
+}
 
 void FluidCubeTimeStep(FluidCube *fluidCube) {
 	int N = fluidCube->size;
@@ -215,23 +234,28 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	float *s = fluidCube->s;
 	float *density = fluidCube->density;
 
-	diffuse(N, 1, Vx, Vx0, diff, dt);
-	diffuse(N, 2, Vy, Vy0, diff, dt);
+	
+	//Velocity step
+	add_source(N, Vx, Vx0, dt);
+	add_source(N, Vy, Vy0, dt);
+	diffuse(N, 1, Vx0, Vx, diff, dt);
+	diffuse(N, 2, Vy0, Vy, diff, dt);
 
-	project(N, Vx, Vy, Vx0, Vy0);
+	project(N, Vx0, Vy0, Vx, Vy);
 
 	advect(N, 1, Vx, Vx0, Vx0, Vy0, dt);
 	advect(N, 2, Vy, Vy0, Vx0, Vy0, dt);
 
-	project(N, Vx0, Vy0, Vx, Vy);
+	project(N, Vx, Vy, Vx0, Vy0);
 
+	//Density step
+	add_source(N, density, s, dt);
 	diffuse(N, 0, s, density, diff, dt);
 	advect(N, 0, density, s, Vx, Vy, dt);
+	getForces(N, s, Vx0, Vy0);
 }
 
-void add_source(int N, float * x, float * s, float dt) {
 
-}
 
 std::string ValuesToText(FluidCube* fluidCube)
 {
@@ -244,7 +268,7 @@ std::string ValuesToText(FluidCube* fluidCube)
 		for (int j = 0; j < N; j++)
 		{
 			
-			ss << fluidCube->Vx[IX(i, j)] << " ";
+			ss << fluidCube->density[IX(i, j)] << " ";
 			
 		}
 		ss << '\n';
@@ -264,20 +288,24 @@ int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
-	gFont = TTF_OpenFont("Verdana.ttf", 4);
+	gFont = TTF_OpenFont("Verdana.ttf", 24);
 	SDL_Color White = { 0, 0, 0 };
 	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	FluidCube * fluidCube = FluidCubeCreate(50, 10, 10, float(1/1000.0f));
-	for (int i = 0; i < 50; i++)
+	FluidCube * fluidCube = FluidCubeCreate(10, 0.001f, 10, 0.01f);
+	for (int i = 0; i < 10; i++)
 	{
-		for (int j = 0; j < 50; j++)
+		for (int j = 0; j < 10; j++)
 		{
-			FluidCubeAddVelocity(fluidCube, i, j, i * 100, j * 100);
+			//FluidCubeAddVelocity(fluidCube, i, j, 10, 0);
 		}
 		
 	}
+	fluidCubeAddDensity(fluidCube, 5, 5, 10000);
+	fluidCubeAddDensity(fluidCube, 4, 4, 10000);
+	fluidCubeAddDensity(fluidCube, 6, 6, 10000);
+	fluidCubeAddDensity(fluidCube, 3, 3, 10000);
 	bool running = true; // set running to true
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
