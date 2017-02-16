@@ -305,19 +305,12 @@ int main()
 	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	FluidCube * fluidCube = FluidCubeCreate(25, 0.001f, 0.001f, 0.01f);
-	for (int i = 0; i < 10; i++)
-	{
-		for (int j = 0; j < 10; j++)
-		{
-			//FluidCubeAddVelocity(fluidCube, i, j, 10, 0);
-		}
-		
-	}
+	FluidCube * fluidCube = FluidCubeCreate(25, 0.001f, 0.1f, 0.01f);
+	//FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
 	//fluidCubeAddDensity(fluidCube, 5, 5, 10000);
 	//fluidCubeAddDensity(fluidCube, 4, 4, 10000);
-	//fluidCubeAddDensity(fluidCube, 6, 6, 10000);
-	fluidCubeAddDensity(fluidCube, 3, 3, 10000);
+	fluidCubeAddDensity(fluidCube, 6, 6, 10000);
+	fluidCubeAddDensity(fluidCube,10, 10, 10000);
 	bool running = true; // set running to true
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -325,6 +318,19 @@ int main()
 		while (SDL_PollEvent(&sdlEvent)) {
 			if (sdlEvent.type == SDL_QUIT)
 				running = false;
+		}
+		const Uint8 *keys = SDL_GetKeyboardState(NULL);
+		if (keys[SDL_SCANCODE_X])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
+		}
+		if (keys[SDL_SCANCODE_Y])
+		{
+			FluidCubeAddVelocity(fluidCube, 10, 1, 0, 100.0f);
+		}
+		if (keys[SDL_SCANCODE_D])
+		{
+			fluidCubeAddDensity(fluidCube, 10, 10, 10000);
 		}
 	//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
