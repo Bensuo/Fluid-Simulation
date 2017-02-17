@@ -9,7 +9,18 @@
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y))
-
+struct Particle
+{
+	float x = 0;
+	float y = 0;
+	bool isActive = false;
+};
+enum CellState
+{
+	EMPTY,
+	FLUID,
+	WALL
+};
 struct FluidCube{
 	int size; 
 	float dt; //Delta Time (Step-Time)
@@ -26,6 +37,9 @@ struct FluidCube{
 	//Velocity previous
 	float *Vx0;
 	float *Vy0;
+
+	Particle *particles;
+	CellState *cellStates;
 };
 typedef struct FluidCube FluidCube; // Ask Marco
 
@@ -47,8 +61,12 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 	fluidCube->Vx0 = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
+	fluidCube->cellStates = new CellState[(N + 2) * (N + 2)]();
+	
+	fluidCube->particles = new Particle[N*N*2]();
 	return fluidCube;
 }
+
 
 // Add Density (Dye)
 void fluidCubeAddDensity(FluidCube *fluidCube, int x, int y, float amount) {
@@ -77,24 +95,19 @@ k = z
 */
 
 static void set_bnd(int b, float *x, int N) {
-	//x axis
-	for (int i = 1; i < N - 1; i++) {
+
+
+	int i;
+	for (i = 1; i <= N; i++) {
+		x[IX(0, i)] = b == 1 ? -x[IX(1, i)] : x[IX(1, i)];   
+		x[IX(N + 1, i)] = b == 1 ? -x[IX(N, i)] : x[IX(N, i)];
 		x[IX(i, 0)] = b == 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
-		x[IX(i, N-1)] = b == 2 ? -x[IX(i, N-2)] : x[IX(i, N-2)];
+		x[IX(i, N + 1)] = b == 2 ? -x[IX(i, N)] : x[IX(i, N)];
 	}
-
-	//y axis
-	for (int j = 1; j < N - 1; j++) {
-		x[IX(0, j)] = b == 1 ? -x[IX(1, j)] : x[IX(1, j)];
-		x[IX(N - 1, j)] = b == 1 ? -x[IX(N - 2, j)] : x[IX(N - 2, j)];
-	}
-
-	//Determines all 4 corner boundary cell velocity
-	x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
-	x[IX(0, N-1)] = 0.5f * (x[IX(1, N-1)] + x[IX(0, N-2)]);
-
-	x[IX(N - 1, N - 1)] = 0.5f * (x[IX(N - 2, N - 1)] + x[IX(N - 1, N - 2)]);
-	x[IX(N - 1, 0)] = 0.5f * (x[IX(N - 2, 0)] + x[IX(N - 1, 1)]);
+	x[IX(0, 0)] = 0.5*(x[IX(1, 0)] + x[IX(0, 1)]);
+	x[IX(0, N + 1)] = 0.5*(x[IX(1, N + 1)] + x[IX(0, N)]);
+	x[IX(N + 1, 0)] = 0.5*(x[IX(N, 0)] + x[IX(N + 1, 1)]);
+	x[IX(N + 1, N + 1)] = 0.5*(x[IX(N, N + 1)] + x[IX(N + 1, N)]);
 }
 
 //Implementation of Gauss-Seidel relaxation formula.
@@ -233,13 +246,14 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	float *Vy0 = fluidCube->Vy0;
 	float *s = fluidCube->s;
 	float *density = fluidCube->density;
-
+	Particle* particles = fluidCube->particles;
+	CellState *cellStates = fluidCube->cellStates;
 	
 	//Velocity step
 	add_source(N, Vx, Vx0, dt);
 	add_source(N, Vy, Vy0, dt);
-	diffuse(N, 1, Vx0, Vx, diff, dt);
-	diffuse(N, 2, Vy0, Vy, diff, dt);
+	diffuse(N, 1, Vx0, Vx, visc, dt);
+	diffuse(N, 2, Vy0, Vy, visc, dt);
 
 	project(N, Vx0, Vy0, Vx, Vy);
 
@@ -252,6 +266,8 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	add_source(N, density, s, dt);
 	diffuse(N, 0, s, density, diff, dt);
 	advect(N, 0, density, s, Vx, Vy, dt);
+
+	
 	getForces(N, s, Vx0, Vy0);
 }
 
@@ -262,16 +278,16 @@ std::string ValuesToText(FluidCube* fluidCube)
 	std::string value = "";
 	stringstream ss;
 	ss << fixed << setprecision(2);
-	int N = fluidCube->size;
-	for (int i = 0; i < N; i++)
+	int N = fluidCube->size + 2;
+	int size = N*N;
+	
+	for (int i = 0; i < size; i++)
 	{
-		for (int j = 0; j < N; j++)
+		ss << fluidCube->density[i] << " ";
+		if ((i+1) % (N) == 0 && i != 0)
 		{
-			
-			ss << fluidCube->density[IX(i, j)] << " ";
-			
+			ss << '\n';
 		}
-		ss << '\n';
 	}
 	value = ss.str();
 	return value;
@@ -288,24 +304,18 @@ int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
-	gFont = TTF_OpenFont("Verdana.ttf", 24);
+	gFont = TTF_OpenFont("Verdana.ttf", 12);
 	SDL_Color White = { 0, 0, 0 };
 	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	FluidCube * fluidCube = FluidCubeCreate(10, 0.001f, 10, 0.01f);
-	for (int i = 0; i < 10; i++)
-	{
-		for (int j = 0; j < 10; j++)
-		{
-			//FluidCubeAddVelocity(fluidCube, i, j, 10, 0);
-		}
-		
-	}
-	fluidCubeAddDensity(fluidCube, 5, 5, 10000);
-	fluidCubeAddDensity(fluidCube, 4, 4, 10000);
+	FluidCube * fluidCube = FluidCubeCreate(10, 0.001f, 0.1f, 0.01f);
+
+	//FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
+	//fluidCubeAddDensity(fluidCube, 5, 5, 10000);
+	//fluidCubeAddDensity(fluidCube, 4, 4, 10000);
 	fluidCubeAddDensity(fluidCube, 6, 6, 10000);
-	fluidCubeAddDensity(fluidCube, 3, 3, 10000);
+	fluidCubeAddDensity(fluidCube,10, 10, 10000);
 	bool running = true; // set running to true
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -313,6 +323,19 @@ int main()
 		while (SDL_PollEvent(&sdlEvent)) {
 			if (sdlEvent.type == SDL_QUIT)
 				running = false;
+		}
+		const Uint8 *keys = SDL_GetKeyboardState(NULL);
+		if (keys[SDL_SCANCODE_X])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
+		}
+		if (keys[SDL_SCANCODE_Y])
+		{
+			FluidCubeAddVelocity(fluidCube, 10, 1, 0, 100.0f);
+		}
+		if (keys[SDL_SCANCODE_D])
+		{
+			fluidCubeAddDensity(fluidCube, 10, 10, 10000);
 		}
 	//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
