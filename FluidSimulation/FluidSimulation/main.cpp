@@ -1,6 +1,7 @@
 #include <glm/glm.hpp>
 #include <SDL.h>
 #include <SDL_ttf.h>
+#include <GL\glew.h>
 #undef main
 #include <iostream>
 #include <string>
@@ -9,9 +10,22 @@
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y))
+#define SIZE 42;
 
-struct FluidCube{
-	int size; 
+struct Particle
+{
+	float x = 0;
+	float y = 0;
+	bool isActive = false;
+};
+enum CellState
+{
+	EMPTY,
+	FLUID,
+	WALL
+};
+struct FluidCube {
+	int size;
 	float dt; //Delta Time (Step-Time)
 	float diff; //Diffussion Amount
 	float visc; // Viscosity, thickness of the fluid
@@ -26,10 +40,13 @@ struct FluidCube{
 	//Velocity previous
 	float *Vx0;
 	float *Vy0;
+
+	Particle *particles;
+	CellState *cellStates;
 };
 typedef struct FluidCube FluidCube; // Ask Marco
 
-FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt){
+FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt) {
 	FluidCube *fluidCube = new FluidCube;
 	int N = size;
 
@@ -47,8 +64,12 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 	fluidCube->Vx0 = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
+	fluidCube->cellStates = new CellState[(N + 2) * (N + 2)]();
+
+	fluidCube->particles = new Particle[N*N * 2]();
 	return fluidCube;
 }
+
 
 // Add Density (Dye)
 void fluidCubeAddDensity(FluidCube *fluidCube, int x, int y, float amount) {
@@ -73,28 +94,22 @@ void FluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, flo
 i = x
 j = y
 k = z
-
 */
 
 static void set_bnd(int b, float *x, int N) {
-	//x axis
-	for (int i = 1; i < N - 1; i++) {
+
+
+	int i;
+	for (i = 1; i <= N; i++) {
+		x[IX(0, i)] = b == 1 ? -x[IX(1, i)] : x[IX(1, i)];
+		x[IX(N + 1, i)] = b == 1 ? -x[IX(N, i)] : x[IX(N, i)];
 		x[IX(i, 0)] = b == 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
-		x[IX(i, N-1)] = b == 2 ? -x[IX(i, N-2)] : x[IX(i, N-2)];
+		x[IX(i, N + 1)] = b == 2 ? -x[IX(i, N)] : x[IX(i, N)];
 	}
-
-	//y axis
-	for (int j = 1; j < N - 1; j++) {
-		x[IX(0, j)] = b == 1 ? -x[IX(1, j)] : x[IX(1, j)];
-		x[IX(N - 1, j)] = b == 1 ? -x[IX(N - 2, j)] : x[IX(N - 2, j)];
-	}
-
-	//Determines all 4 corner boundary cell velocity
-	x[IX(0, 0)] = 0.5f * (x[IX(1, 0)] + x[IX(0, 1)]);
-	x[IX(0, N-1)] = 0.5f * (x[IX(1, N-1)] + x[IX(0, N-2)]);
-
-	x[IX(N - 1, N - 1)] = 0.5f * (x[IX(N - 2, N - 1)] + x[IX(N - 1, N - 2)]);
-	x[IX(N - 1, 0)] = 0.5f * (x[IX(N - 2, 0)] + x[IX(N - 1, 1)]);
+	x[IX(0, 0)] = 0.5*(x[IX(1, 0)] + x[IX(0, 1)]);
+	x[IX(0, N + 1)] = 0.5*(x[IX(1, N + 1)] + x[IX(0, N)]);
+	x[IX(N + 1, 0)] = 0.5*(x[IX(N, 0)] + x[IX(N + 1, 1)]);
+	x[IX(N + 1, N + 1)] = 0.5*(x[IX(N, N + 1)] + x[IX(N + 1, N)]);
 }
 
 //Implementation of Gauss-Seidel relaxation formula.
@@ -233,13 +248,14 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	float *Vy0 = fluidCube->Vy0;
 	float *s = fluidCube->s;
 	float *density = fluidCube->density;
+	Particle* particles = fluidCube->particles;
+	CellState *cellStates = fluidCube->cellStates;
 
-	
 	//Velocity step
 	add_source(N, Vx, Vx0, dt);
 	add_source(N, Vy, Vy0, dt);
-	diffuse(N, 1, Vx0, Vx, diff, dt);
-	diffuse(N, 2, Vy0, Vy, diff, dt);
+	diffuse(N, 1, Vx0, Vx, visc, dt);
+	diffuse(N, 2, Vy0, Vy, visc, dt);
 
 	project(N, Vx0, Vy0, Vx, Vy);
 
@@ -252,6 +268,8 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	add_source(N, density, s, dt);
 	diffuse(N, 0, s, density, diff, dt);
 	advect(N, 0, density, s, Vx, Vy, dt);
+
+
 	getForces(N, s, Vx0, Vy0);
 }
 
@@ -262,16 +280,16 @@ std::string ValuesToText(FluidCube* fluidCube)
 	std::string value = "";
 	stringstream ss;
 	ss << fixed << setprecision(2);
-	int N = fluidCube->size;
-	for (int i = 0; i < N; i++)
+	int N = fluidCube->size + 2;
+	int size = N*N;
+
+	for (int i = 0; i < size; i++)
 	{
-		for (int j = 0; j < N; j++)
+		ss << fluidCube->density[i] << " ";
+		if ((i + 1) % (N) == 0 && i != 0)
 		{
-			
-			ss << fluidCube->density[IX(i, j)] << " ";
-			
+			ss << '\n';
 		}
-		ss << '\n';
 	}
 	value = ss.str();
 	return value;
@@ -283,29 +301,71 @@ SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 TTF_Font* gFont = NULL;
 
+void drawFluidSim(FluidCube* fluidCube) {
+
+	int N = fluidCube->size + 2;
+	int size = N*N;
+	int gridSize = 10;
+	for (int x = 0; x < size; x++)
+	{
+		for (int y = 0; y < size; y++) {
+			float density = fluidCube->density[x + y];
+			float colorPercentage = density / 0.001;
+
+			if (colorPercentage > 1) {
+				colorPercentage = 1;
+			}
+
+			//cout << density << endl;
+			//GL BEGIN
+			glBegin(GL_QUADS);
+			glColor4f(0.5, 1.0, 1.0,colorPercentage);
+			glVertex3f(x*gridSize, y*gridSize, 0);
+			glVertex3f(x*gridSize, (y+1)*gridSize, 0);
+			glVertex3f((x+1)*gridSize, (y+1)*gridSize, 0);
+			glVertex3f((x + 1)*gridSize, y*gridSize, 0);
+
+			glEnd();
+
+			//ss << fluidCube->density[i] << " ";
+			if ((y + 1) % (N) == 0 && y != 0)
+			{
+				//ss << '\n';
+			}
+		}
+	}
+
+
+}
 
 int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
 	TTF_Init();
-	gFont = TTF_OpenFont("Verdana.ttf", 24);
+
+	// Request an OpenGL 3.0 context.
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+
+	SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);  // double buffering on
+	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
+	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4); // Turn on x4 multisampling anti-aliasing (MSAA)
+
+	gFont = TTF_OpenFont("Verdana.ttf", 12);
 	SDL_Color White = { 0, 0, 0 };
-	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
+	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
+	SDL_GLContext context = SDL_GL_CreateContext(gWindow); //Create OpenGL Context and binds the gWindow to SDL.
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
-	FluidCube * fluidCube = FluidCubeCreate(10, 0.001f, 10, 0.01f);
-	for (int i = 0; i < 10; i++)
-	{
-		for (int j = 0; j < 10; j++)
-		{
-			//FluidCubeAddVelocity(fluidCube, i, j, 10, 0);
-		}
-		
-	}
-	fluidCubeAddDensity(fluidCube, 5, 5, 10000);
-	fluidCubeAddDensity(fluidCube, 4, 4, 10000);
+	glEnable(GL_BLEND);
+	FluidCube * fluidCube = FluidCubeCreate(10, 0.001f, 0.1f, 0.01f);
+
+	//FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
+	//fluidCubeAddDensity(fluidCube, 5, 5, 10000);
+	//fluidCubeAddDensity(fluidCube, 4, 4, 10000);
 	fluidCubeAddDensity(fluidCube, 6, 6, 10000);
-	fluidCubeAddDensity(fluidCube, 3, 3, 10000);
+	fluidCubeAddDensity(fluidCube, 10, 10, 10000);
 	bool running = true; // set running to true
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -314,11 +374,40 @@ int main()
 			if (sdlEvent.type == SDL_QUIT)
 				running = false;
 		}
-	//TODO: Some timestep stuff
+		const Uint8 *keys = SDL_GetKeyboardState(NULL);
+		if (keys[SDL_SCANCODE_X])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
+		}
+		if (keys[SDL_SCANCODE_C])
+		{
+			FluidCubeAddVelocity(fluidCube, 10, 1, 0, 100.0f);
+		}
+		if (keys[SDL_SCANCODE_V])
+		{
+			fluidCubeAddDensity(fluidCube, 10, 10, 10000);
+		}
+
+		//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
 
 		//TODO: Proper drawing code
-		SDL_RenderClear(gRenderer);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+		glMatrixMode(GL_MODELVIEW);
+		glLoadIdentity();
+		glOrtho(-100, 1920, -100, 1500, 0.0f, 1.0f); // Reference system of the simulation
+		glPointSize(10.0f);
+		glLineWidth(5.0f);
+
+		drawFluidSim(fluidCube);
+
+		SDL_GL_SwapWindow(gWindow); // swap buffers
+
+		
+
+		/*SDL_RenderClear(gRenderer);
 		string output = ValuesToText(fluidCube);
 		SDL_Surface* textSurface = TTF_RenderText_Blended_Wrapped(gFont, output.c_str(), White, SCREEN_WIDTH);
 		SDL_Texture* text = SDL_CreateTextureFromSurface(gRenderer, textSurface);
@@ -328,7 +417,7 @@ int main()
 		SDL_Rect textQuad = { 20, 30, text_width, text_height };
 		SDL_RenderCopy(gRenderer, text, NULL, &textQuad);
 		SDL_RenderPresent(gRenderer);
-		SDL_DestroyTexture(text);
+		SDL_DestroyTexture(text);*/
 	}
-	return 0; 
+	return 0;
 }
