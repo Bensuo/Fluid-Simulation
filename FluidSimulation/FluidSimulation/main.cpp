@@ -10,7 +10,8 @@
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y))
-#define SIZE 42;
+#define CELL_SIZE 80
+#define GRID_SIZE 10
 
 struct Particle
 {
@@ -18,12 +19,14 @@ struct Particle
 	float y = 0;
 	bool isActive = false;
 };
+
 enum CellState
 {
 	EMPTY,
 	FLUID,
 	WALL
 };
+
 struct FluidCube {
 	int size;
 	float dt; //Delta Time (Step-Time)
@@ -45,6 +48,9 @@ struct FluidCube {
 	CellState *cellStates;
 };
 typedef struct FluidCube FluidCube; // Ask Marco
+
+int cellOffSetX = 8;
+int cellOffSetY = 2;
 
 FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt) {
 	FluidCube *fluidCube = new FluidCube;
@@ -113,7 +119,6 @@ static void set_bnd(int b, float *x, int N) {
 }
 
 //Implementation of Gauss-Seidel relaxation formula.
-//Ask Marco for clarification
 void diffuse(int N, int b, float *x, float *x0, float diff, float dt) {
 	int i, j, k;
 	float a = dt * diff * N * N;
@@ -130,7 +135,6 @@ void diffuse(int N, int b, float *x, float *x0, float diff, float dt) {
 
 // Linearly interpolate from the grid of previous density values 
 // and assign this value to the current grid cell.
-// Ask Marco
 
 void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 	int i, j, i0, j0, i1, j1;
@@ -295,43 +299,81 @@ std::string ValuesToText(FluidCube* fluidCube)
 	return value;
 }
 
-const int SCREEN_WIDTH = 1280;
-const int SCREEN_HEIGHT = 720;
+const int SCREEN_WIDTH = 1900;
+const int SCREEN_HEIGHT = 1060;
 SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 TTF_Font* gFont = NULL;
 
-void drawFluidSim(FluidCube* fluidCube) {
+void drawFluidVelocity(FluidCube* fluidCube) {
+	int i, j;
+	int N = fluidCube->size;
+	float x, y;
+	float h = 1.0f;
+	float *Vx = fluidCube->Vx;
+	float *Vy = fluidCube->Vy;
+	int offSetX = cellOffSetX * CELL_SIZE;
+	int offSetY = cellOffSetY * CELL_SIZE;
+	float cellSize = CELL_SIZE;
 
-	int N = fluidCube->size + 2;
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glLineWidth(5.0f);
+
+	glBegin(GL_LINES);
+
+	for (i = 1; i <= N; i++) {
+		x = (i - 1.0f) * h;
+		for (j = 1; j <= N; j++) {
+			y = (j - 1.0f) * h;
+
+			glVertex2f(x*cellSize + offSetX, y*cellSize + offSetY);
+			glVertex2f((x + Vx[IX(i, j)]) * cellSize + offSetX, (y + Vy[IX(i, j)]) * cellSize + offSetY);
+		}
+	}
+	glEnd();
+}
+
+void drawFluidDensity(FluidCube* fluidCube) {
+
+	int N = fluidCube->size;
 	int size = N*N;
-	int gridSize = 10;
-	for (int x = 0; x < size; x++)
+	float h = 1.0f;
+	int offSetX = cellOffSetX * CELL_SIZE;
+	int offSetY = cellOffSetY * CELL_SIZE;
+	
+	int cellSize = CELL_SIZE; //size of cells in grid
+	for (int i = 0; i < N; i++)
 	{
-		for (int y = 0; y < size; y++) {
-			float density = fluidCube->density[x + y];
-			float colorPercentage = density / 0.001;
+		float x = (i - 0.5f)*h;
+		for (int j = 0; j < N; j++) {
+			float y = (j - 0.5f)*h;
+			//float density = fluidCube->density[i+j];
+			float sourceAlpha = 0.1;
+			float d00, d01, d10, d11;
 
-			if (colorPercentage > 1) {
-				colorPercentage = 1;
-			}
+			//calculate position of the fluid in the grid
+			d00 = fluidCube->density[IX(i, j)]; 
+			d01 = fluidCube->density[IX(i, j +1 )];
+			d11 = fluidCube->density[IX(i + 1, j + 1)];
+			d10 = fluidCube->density[IX(i + 1, j)];
 
-			//cout << density << endl;
-			//GL BEGIN
+			// draw density as a cube of quads
+
 			glBegin(GL_QUADS);
-			glColor4f(0.5, 1.0, 1.0,colorPercentage);
-			glVertex3f(x*gridSize, y*gridSize, 0);
-			glVertex3f(x*gridSize, (y+1)*gridSize, 0);
-			glVertex3f((x+1)*gridSize, (y+1)*gridSize, 0);
-			glVertex3f((x + 1)*gridSize, y*gridSize, 0);
+			glColor4f(d00 + 0.4, d00, d00, sourceAlpha);
+			glVertex3f(x*cellSize + offSetX, y*cellSize + offSetY, 0);
+
+			glColor4f(d01 + 0.4, d01, d01, sourceAlpha);
+			glVertex3f(x*cellSize + offSetX, (y + h)*cellSize + offSetY, 0);
+
+			glColor4f(d11 + 0.4, d11, d11, sourceAlpha);
+			glVertex3f((x + h)*cellSize + offSetX, (y + h)*cellSize + offSetY, 0);
+
+			glColor4f(d10 + 0.4, d10, d10, sourceAlpha);
+			glVertex3f((x + h)*cellSize + offSetX, y*cellSize + offSetY, 0);
 
 			glEnd();
 
-			//ss << fluidCube->density[i] << " ";
-			if ((y + 1) % (N) == 0 && y != 0)
-			{
-				//ss << '\n';
-			}
 		}
 	}
 
@@ -359,13 +401,13 @@ int main()
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 	glEnable(GL_BLEND);
-	FluidCube * fluidCube = FluidCubeCreate(10, 0.001f, 0.1f, 0.01f);
+	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.001f, 0.1f, 0.1f);
 
-	//FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
-	//fluidCubeAddDensity(fluidCube, 5, 5, 10000);
+	//FluidCubeAddVelocity(fluidCube, 1, 1, 100.0f, 0);
+	//fluidCubeAddDensity(fluidCube, 1, 1, 10);
 	//fluidCubeAddDensity(fluidCube, 4, 4, 10000);
-	fluidCubeAddDensity(fluidCube, 6, 6, 10000);
-	fluidCubeAddDensity(fluidCube, 10, 10, 10000);
+	//fluidCubeAddDensity(fluidCube, 6, 6, 10000);
+	//fluidCubeAddDensity(fluidCube, 10, 10, 10000);
 	bool running = true; // set running to true
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -375,18 +417,114 @@ int main()
 				running = false;
 		}
 		const Uint8 *keys = SDL_GetKeyboardState(NULL);
+
+		//Add Velocity
+		if (keys[SDL_SCANCODE_Z])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 1, 1000.0f, 0);
+		}
+
 		if (keys[SDL_SCANCODE_X])
 		{
-			FluidCubeAddVelocity(fluidCube, 1, 10, 100.0f, 0);
+			FluidCubeAddVelocity(fluidCube, 1, 1, 100.0f, 0);
 		}
+
 		if (keys[SDL_SCANCODE_C])
 		{
-			FluidCubeAddVelocity(fluidCube, 10, 1, 0, 100.0f);
+			FluidCubeAddVelocity(fluidCube, 1, 1, 10.0f, 0);
 		}
+
+
 		if (keys[SDL_SCANCODE_V])
 		{
-			fluidCubeAddDensity(fluidCube, 10, 10, 10000);
+			FluidCubeAddVelocity(fluidCube, 1, 1, 1.0f, 0);
 		}
+
+		//Add Density (Fluid)
+		if (keys[SDL_SCANCODE_A])
+		{
+			fluidCubeAddDensity(fluidCube, 1, 1, 1000);
+		}
+
+		if (keys[SDL_SCANCODE_S])
+		{
+			fluidCubeAddDensity(fluidCube, 1, 1, 100);
+		}
+
+		if (keys[SDL_SCANCODE_D])
+		{
+			fluidCubeAddDensity(fluidCube, 1, 1, 10);
+		}
+
+		if (keys[SDL_SCANCODE_F])
+		{
+			fluidCubeAddDensity(fluidCube, 1, 1, 1);
+		}
+
+		//Add Density and Fluid
+
+		if (keys[SDL_SCANCODE_Q])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 1, 1000.0f, 0);
+			fluidCubeAddDensity(fluidCube, 1, 1, 1000);
+		}
+
+		if (keys[SDL_SCANCODE_W])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 1, 100.0f, 0);
+			fluidCubeAddDensity(fluidCube, 1, 1, 100);
+		}
+
+		if (keys[SDL_SCANCODE_E])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 1, 10.0f, 0);
+			fluidCubeAddDensity(fluidCube, 1, 1, 10);
+		}
+
+		if (keys[SDL_SCANCODE_R])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 1, 1.0f, 0);
+			fluidCubeAddDensity(fluidCube, 1, 1, 1);
+		}
+
+		//Move Grid (Camera)
+
+		if (keys[SDL_SCANCODE_I])
+		{
+			cellOffSetY -= 1;
+		}
+
+		if (keys[SDL_SCANCODE_K])
+		{
+			cellOffSetY += 1;
+		}
+
+		if (keys[SDL_SCANCODE_J])
+		{
+			cellOffSetX += 1;
+		}
+
+		if (keys[SDL_SCANCODE_L])
+		{
+			cellOffSetX -= 1;
+		}
+
+		//Exit Simulation
+		if (sdlEvent.type == SDL_KEYDOWN) {
+			if (sdlEvent.key.keysym.sym == SDLK_ESCAPE) {
+				running = false;
+			}
+		}
+
+		//Mouse position
+		int x;
+		int y; 
+
+		SDL_GetMouseState(&x, &y);
+		int gridX = x / 10;
+		int gridY = y / 10;
+		
+		cout << fluidCube->density[gridX + gridY] << endl;
 
 		//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
@@ -397,16 +535,17 @@ int main()
 		glClear(GL_COLOR_BUFFER_BIT);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glOrtho(-100, 1920, -100, 1500, 0.0f, 1.0f); // Reference system of the simulation
+		glOrtho(0, 1900, 0, 1060, 0.0f, 1.0f); // Reference system of the simulation
 		glPointSize(10.0f);
 		glLineWidth(5.0f);
 
-		drawFluidSim(fluidCube);
+		drawFluidDensity(fluidCube);
+		drawFluidVelocity(fluidCube);
 
 		SDL_GL_SwapWindow(gWindow); // swap buffers
 
 		
-
+		//Ben's Code to draw numbers
 		/*SDL_RenderClear(gRenderer);
 		string output = ValuesToText(fluidCube);
 		SDL_Surface* textSurface = TTF_RenderText_Blended_Wrapped(gFont, output.c_str(), White, SCREEN_WIDTH);
