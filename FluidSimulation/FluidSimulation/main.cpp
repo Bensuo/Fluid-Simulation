@@ -10,8 +10,8 @@
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y))
-#define CELL_SIZE 80
-#define GRID_SIZE 10
+#define CELL_SIZE 50
+#define GRID_SIZE 100
 
 struct Particle
 {
@@ -51,6 +51,10 @@ typedef struct FluidCube FluidCube; // Ask Marco
 
 int cellOffSetX = 8;
 int cellOffSetY = 2;
+
+//Mouse position
+int mousePosiX;
+int mousePosiY;
 
 FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt) {
 	FluidCube *fluidCube = new FluidCube;
@@ -237,7 +241,7 @@ void getForces(int N, float * s, float * Vx0, float * Vy0)
 	{
 		s[i] = 0;
 		Vx0[i] = 0;
-		Vy0[i] = 10.0f;
+		Vy0[i] = 0.0f;
 	}
 }
 
@@ -348,7 +352,7 @@ void drawFluidDensity(FluidCube* fluidCube) {
 		for (int j = 0; j < N; j++) {
 			float y = (j - 0.5f)*h;
 			//float density = fluidCube->density[i+j];
-			float sourceAlpha = 0.1;
+			float sourceAlpha = 0.5;
 			float d00, d01, d10, d11;
 
 			//calculate position of the fluid in the grid
@@ -360,16 +364,16 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			// draw density as a cube of quads
 
 			glBegin(GL_QUADS);
-			glColor4f(d00 + 0.4, d00, d00, sourceAlpha);
+			glColor4f(d00, d00, d00, sourceAlpha); 
 			glVertex3f(x*cellSize + offSetX, y*cellSize + offSetY, 0);
 
-			glColor4f(d01 + 0.4, d01, d01, sourceAlpha);
+			glColor4f(d01, d01, d01, sourceAlpha); 
 			glVertex3f(x*cellSize + offSetX, (y + h)*cellSize + offSetY, 0);
 
-			glColor4f(d11 + 0.4, d11, d11, sourceAlpha);
+			glColor4f(d11, d11, d11, sourceAlpha); 
 			glVertex3f((x + h)*cellSize + offSetX, (y + h)*cellSize + offSetY, 0);
 
-			glColor4f(d10 + 0.4, d10, d10, sourceAlpha);
+			glColor4f(d10, d10, d10, sourceAlpha);
 			glVertex3f((x + h)*cellSize + offSetX, y*cellSize + offSetY, 0);
 
 			glEnd();
@@ -401,7 +405,7 @@ int main()
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	SDL_SetRenderDrawColor(gRenderer, 0xFF, 0xFF, 0xFF, 0xFF);
 	glEnable(GL_BLEND);
-	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.001f, 0.1f, 0.1f);
+	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.1f, 0.1f);
 
 	//FluidCubeAddVelocity(fluidCube, 1, 1, 100.0f, 0);
 	//fluidCubeAddDensity(fluidCube, 1, 1, 10);
@@ -440,6 +444,11 @@ int main()
 			FluidCubeAddVelocity(fluidCube, 1, 1, 1.0f, 0);
 		}
 
+		if (keys[SDL_SCANCODE_T])
+		{
+			FluidCubeAddVelocity(fluidCube, 1, 1, 10000.0f, 0);
+		}
+
 		//Add Density (Fluid)
 		if (keys[SDL_SCANCODE_A])
 		{
@@ -460,6 +469,7 @@ int main()
 		{
 			fluidCubeAddDensity(fluidCube, 1, 1, 1);
 		}
+
 
 		//Add Density and Fluid
 
@@ -515,16 +525,31 @@ int main()
 				running = false;
 			}
 		}
-
-		//Mouse position
-		int x;
-		int y; 
-
-		SDL_GetMouseState(&x, &y);
-		int gridX = x / 10;
-		int gridY = y / 10;
 		
+		//Get Mouse Position
+
+		SDL_GetMouseState(&mousePosiX, &mousePosiY);
+		int gridX = mousePosiX / CELL_SIZE;
+		int gridY = mousePosiY / CELL_SIZE;
+
 		cout << fluidCube->density[gridX + gridY] << endl;
+
+		//Mouse controls
+
+		//If a button on the mouse is pressed.
+		if (sdlEvent.type == SDL_MOUSEBUTTONDOWN) {
+
+			//If the left btton is pressed
+			if (sdlEvent.button.button == SDL_BUTTON_LEFT) {
+					FluidCubeAddVelocity(fluidCube, gridX, gridY, 1000.0f, 0);
+			}
+			//If the right btton is pressed
+			if (sdlEvent.button.button == SDL_BUTTON_RIGHT) {
+				fluidCubeAddDensity(fluidCube, 1, 1, 1000);
+			}
+		}
+
+		
 
 		//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
