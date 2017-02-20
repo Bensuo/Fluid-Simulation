@@ -1,6 +1,6 @@
 #include <glm/glm.hpp>
 #include <SDL.h>
-#include <SDL_ttf.h>
+//#include <SDL_ttf.h>
 #include <GL\glew.h>
 #undef main
 #include <iostream>
@@ -10,8 +10,34 @@
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y))
-#define CELL_SIZE 50
-#define GRID_SIZE 100
+
+#define CELL_SIZE 50 //Distance between each vertex point building one square cell.
+#define GRID_SIZE 100 //Number of cells in the grid. 
+#define DISPLAY_SIZE_X 1900 // Size of display on x cords.
+#define DISPLAY_SIZE_Y 1060 // Size of display on y cords. 
+
+//Global Variables
+
+int x, y;
+
+/*Display Variables*/
+
+//Display offsets
+int cordOffSetX;
+int cordOffSetY;
+
+//Cell offsets
+int cellOffSetX = cordOffSetX;
+int cellOffSetY = cordOffSetY;
+
+//Grid Posi
+int gridPosiX;
+int gridPosiY;
+
+//Mouse position
+int mousePosiX;
+int mousePosiY;
+int mousePosiZ;
 
 struct Particle
 {
@@ -49,12 +75,10 @@ struct FluidCube {
 };
 typedef struct FluidCube FluidCube; // Ask Marco
 
-int cellOffSetX = 8;
-int cellOffSetY = 2;
-
-//Mouse position
-int mousePosiX;
-int mousePosiY;
+void boundary2DOrigin(int posiX,int posiY) {
+	posiX = x;
+	posiY = y;
+}
 
 FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt) {
 	FluidCube *fluidCube = new FluidCube;
@@ -75,8 +99,8 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
 	fluidCube->cellStates = new CellState[(N + 2) * (N + 2)]();
+	fluidCube->particles = new Particle[N*N*2]();
 
-	fluidCube->particles = new Particle[N*N * 2]();
 	return fluidCube;
 }
 
@@ -259,6 +283,7 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	Particle* particles = fluidCube->particles;
 	CellState *cellStates = fluidCube->cellStates;
 
+
 	//Velocity step
 	add_source(N, Vx, Vx0, dt);
 	add_source(N, Vy, Vy0, dt);
@@ -303,11 +328,11 @@ std::string ValuesToText(FluidCube* fluidCube)
 	return value;
 }
 
-const int SCREEN_WIDTH = 1900;
-const int SCREEN_HEIGHT = 1060;
+const int SCREEN_WIDTH = DISPLAY_SIZE_X;
+const int SCREEN_HEIGHT = DISPLAY_SIZE_Y;
 SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
-TTF_Font* gFont = NULL;
+//TTF_Font* gFont = NULL;
 
 void drawFluidVelocity(FluidCube* fluidCube) {
 	int i, j;
@@ -345,12 +370,14 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	int offSetX = cellOffSetX * CELL_SIZE;
 	int offSetY = cellOffSetY * CELL_SIZE;
 	
-	int cellSize = CELL_SIZE; //size of cells in grid
+	float aspectRatio = DISPLAY_SIZE_X / DISPLAY_SIZE_Y;
+	int cellSizeX = (int)(aspectRatio * (1.0f / GRID_SIZE) * DISPLAY_SIZE_X); //size of cells in grid
+	int cellSizeY = (int)((1.0f / GRID_SIZE) * DISPLAY_SIZE_Y); //size of cells in grid
 	for (int i = 0; i < N; i++)
 	{
-		float x = (i - 0.5f)*h;
+		float x = (i )*h;//- 0.5f
 		for (int j = 0; j < N; j++) {
-			float y = (j - 0.5f)*h;
+			float y = (j )*h;//- 0.5f
 			//float density = fluidCube->density[i+j];
 			float sourceAlpha = 0.5;
 			float d00, d01, d10, d11;
@@ -364,17 +391,17 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			// draw density as a cube of quads
 
 			glBegin(GL_QUADS);
-			glColor4f(d00, d00, d00, sourceAlpha); 
-			glVertex3f(x*cellSize + offSetX, y*cellSize + offSetY, 0);
+			glColor4f(d00 + 1.0, d00, d00, sourceAlpha);
+			glVertex3f(x*cellSizeX + offSetX, y*cellSizeY + offSetY, 0);
 
-			glColor4f(d01, d01, d01, sourceAlpha); 
-			glVertex3f(x*cellSize + offSetX, (y + h)*cellSize + offSetY, 0);
+			glColor4f(d01 + 1.0, d01, d01, sourceAlpha);
+			glVertex3f(x*cellSizeX + offSetX, (y + h)*cellSizeY + offSetY, 0);
 
-			glColor4f(d11, d11, d11, sourceAlpha); 
-			glVertex3f((x + h)*cellSize + offSetX, (y + h)*cellSize + offSetY, 0);
+			glColor4f(d11 + 1.0, d11, d11, sourceAlpha);
+			glVertex3f((x + h)*cellSizeX + offSetX, (y + h)*cellSizeY + offSetY, 0);
 
-			glColor4f(d10, d10, d10, sourceAlpha);
-			glVertex3f((x + h)*cellSize + offSetX, y*cellSize + offSetY, 0);
+			glColor4f(d10 + 1.0, d10, d10, sourceAlpha);
+			glVertex3f((x + h)*cellSizeX + offSetX, y*cellSizeY + offSetY, 0);
 
 			glEnd();
 
@@ -387,7 +414,10 @@ void drawFluidDensity(FluidCube* fluidCube) {
 int main()
 {
 	SDL_Init(SDL_INIT_VIDEO);
-	TTF_Init();
+	//TTF_Init();
+
+	std::cout << cordOffSetX << endl;
+	std::cout << cordOffSetY << endl;
 
 	// Request an OpenGL 3.0 context.
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -398,7 +428,7 @@ int main()
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
 	SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4); // Turn on x4 multisampling anti-aliasing (MSAA)
 
-	gFont = TTF_OpenFont("Verdana.ttf", 12);
+	//gFont = TTF_OpenFont("Verdana.ttf", 12);
 	SDL_Color White = { 0, 0, 0 };
 	gWindow = SDL_CreateWindow("SDL Tutorial", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_OPENGL | SDL_WINDOW_SHOWN);
 	SDL_GLContext context = SDL_GL_CreateContext(gWindow); //Create OpenGL Context and binds the gWindow to SDL.
@@ -407,8 +437,8 @@ int main()
 	glEnable(GL_BLEND);
 	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.1f, 0.1f);
 
-	//FluidCubeAddVelocity(fluidCube, 1, 1, 100.0f, 0);
-	//fluidCubeAddDensity(fluidCube, 1, 1, 10);
+	FluidCubeAddVelocity(fluidCube, 1, 1, 100.0f, 0);
+	fluidCubeAddDensity(fluidCube, 1, 1, 100);
 	//fluidCubeAddDensity(fluidCube, 4, 4, 10000);
 	//fluidCubeAddDensity(fluidCube, 6, 6, 10000);
 	//fluidCubeAddDensity(fluidCube, 10, 10, 10000);
@@ -444,11 +474,6 @@ int main()
 			FluidCubeAddVelocity(fluidCube, 1, 1, 1.0f, 0);
 		}
 
-		if (keys[SDL_SCANCODE_T])
-		{
-			FluidCubeAddVelocity(fluidCube, 1, 1, 10000.0f, 0);
-		}
-
 		//Add Density (Fluid)
 		if (keys[SDL_SCANCODE_A])
 		{
@@ -469,7 +494,6 @@ int main()
 		{
 			fluidCubeAddDensity(fluidCube, 1, 1, 1);
 		}
-
 
 		//Add Density and Fluid
 
@@ -525,42 +549,68 @@ int main()
 				running = false;
 			}
 		}
-		
-		//Get Mouse Position
 
-		SDL_GetMouseState(&mousePosiX, &mousePosiY);
-		int gridX = mousePosiX / CELL_SIZE;
-		int gridY = mousePosiY / CELL_SIZE;
+		//Get density at mouse posi and cout
+		SDL_GetMouseState(&mousePosiX, &mousePosiY); 
+		int gridX = (int)(((GRID_SIZE)/ (float)DISPLAY_SIZE_X) * mousePosiX);//
+		int gridY = (int)(((GRID_SIZE) / (float)DISPLAY_SIZE_Y) * mousePosiY);
 
-		cout << fluidCube->density[gridX + gridY] << endl;
+		cout << gridX <<", " << gridY << endl;
 
-		//Mouse controls
+		//cout << fluidCube->density[gridX + gridY] << endl;
 
-		//If a button on the mouse is pressed.
+		//If mouse button is pressed
 		if (sdlEvent.type == SDL_MOUSEBUTTONDOWN) {
 
-			//If the left btton is pressed
+			//If the left button is pressed
 			if (sdlEvent.button.button == SDL_BUTTON_LEFT) {
-					FluidCubeAddVelocity(fluidCube, gridX, gridY, 1000.0f, 0);
+				FluidCubeAddVelocity(fluidCube, gridX, GRID_SIZE-1-gridY, 1000.0f, 0);
+				cout << "mouse is pressed (LEFT)" << endl;
+
+				/*
+				1) The modelview matrix defines how your objects are transformed (meaning translation,rotation and scaling) in your world coordinate frame
+				2) The projection matrix defines the properties of the camera that views the objects in the world coordinate frame. Here you typically
+				set the zoom factor, aspect ratio and the near and far clipping planes.
+				3) The viewport specifies the affine transformation of x and y from normalized device coordinates to window coordinates.
+
+				
+				GLint viewport[4]; //hold the viewport info
+				GLdouble modelview[16]; //hold the modelview info
+				GLdouble projection[16]; //hold the projection matrix info
+				GLfloat screenPosiX, screenPosiY, screenPosiZ; //variables to hold screen x,y,z coordinates
+				GLdouble worldX, worldY, worldZ; //variables to hold world x,y,z coordinates
+
+				glGetDoublev(GL_MODELVIEW_MATRIX, modelview); //get the modelview info 
+				glGetDoublev(GL_PROJECTION_MATRIX, projection); //get the projection matrix info 
+				glGetIntegerv(GL_VIEWPORT, viewport); //get the viewport info <- Transform world cords from screen cords. 
+
+				screenPosiX = (float)x;
+				screenPosiY = (float)viewport[3] - (float)y;
+				screenPosiZ = 0;*/
 			}
-			//If the right btton is pressed
+
 			if (sdlEvent.button.button == SDL_BUTTON_RIGHT) {
-				fluidCubeAddDensity(fluidCube, 1, 1, 1000);
+				fluidCubeAddDensity(fluidCube, gridX, GRID_SIZE-1-gridY, 1000);
+				cout << "mouse is pressed (RIGHT)" << endl;
 			}
+
 		}
 
+		
 		
 
 		//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
 
+		
 		//TODO: Proper drawing code
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glMatrixMode(GL_MODELVIEW);
 		glLoadIdentity();
-		glOrtho(0, 1900, 0, 1060, 0.0f, 1.0f); // Reference system of the simulation
+		glOrtho(0, DISPLAY_SIZE_X, 0, DISPLAY_SIZE_Y, 0.0f, 1.0f); // Reference system of the simulation
+
 		glPointSize(10.0f);
 		glLineWidth(5.0f);
 
