@@ -96,6 +96,7 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 void fluidCubeAddDensity(FluidCube *fluidCube, int x, int y, float amount) {
 	int N = fluidCube->size;
 	fluidCube->s[IX(x, y)] += amount;
+	//cout << "Density amount at point: " << (float)fluidCube->s[IX(x, y)] << endl;
 }
 
 //Add Velocity
@@ -421,7 +422,7 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 
 			glColor3f(1.0f, 1.0f, 1.0f);
 			glVertex2f(x*CELL_SIZE_X, y*CELL_SIZE_Y);
-			glColor3f(0.0, 0.0, (addPointVelo / 10.0));
+			glColor3f(1.0, 0.0, (addPointVelo / 10.0));
 			glVertex2f((x * CELL_SIZE_X + (Vx[IX(i, j)] * velocityMultiplier)) , (y * CELL_SIZE_Y + (Vy[IX(i, j)] * velocityMultiplier)) );
 		}
 	}
@@ -459,8 +460,8 @@ void drawFluidDensity(FluidCube* fluidCube) {
 
 
 
-			//Add Density color and hue
-			if (fluidCube->density[IX(i, j)] > 0.5) {
+			//Add Density color and hue if greater than 0.1
+			if (fluidCube->density[IX(i, j)] > 0.1) {
 				d00R = d00 + 0.0f;
 				d00G = d00 + 1.0f;
 				d00B = d00 + 0.0f;
@@ -468,12 +469,12 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			}
 			else {
 				d00R = d00 + 1.0f;
-				d00G = d00 + 0.0f;
-				d00B = d00 + 0.0f;
+				d00G = d00 + 1.0f;
+				d00B = d00 + 1.0f;
 				sourceAlpha00 = 1.0;
 			}
 
-			if (fluidCube->density[IX(i, j + 1)] > 0.5) {
+			if (fluidCube->density[IX(i, j + 1)] > 0.1) {
 				d01R = d01 + 0.0f;
 				d01G = d01 + 1.0f;
 				d01B = d01 + 0.0f;
@@ -481,12 +482,12 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			}
 			else {
 				d01R = d01 + 1.0f;
-				d01G = d01 + 0.0f;
-				d01B = d01 + 0.0f;
+				d01G = d01 + 1.0f;
+				d01B = d01 + 1.0f;
 				sourceAlpha01 = 1.0;
 			}
 
-			if (fluidCube->density[IX(i + 1, j + 1)] > 0.5) {
+			if (fluidCube->density[IX(i + 1, j + 1)] > 0.1) {
 				d11R = d11 + 0.0f;
 				d11G = d11 + 1.0f;
 				d11B = d11 + 0.0f;
@@ -494,12 +495,12 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			}
 			else {
 				d11R = d11 + 1.0f;
-				d11G = d11 + 0.0f;
-				d11B = d11 + 0.0f;
+				d11G = d11 + 1.0f;
+				d11B = d11 + 1.0f;
 				sourceAlpha11 = 1.0;
 			}
 
-			if (fluidCube->density[IX(i + 1, j)] > 0.5) {
+			if (fluidCube->density[IX(i + 1, j)] > 0.1) {
 				d10R = d10 + 0.0f;
 				d10G = d10 + 1.0f;
 				d10B = d10 + 0.0f;
@@ -507,25 +508,78 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			}
 			else {
 				d10R = d10 + 1.0f;
+				d10G = d10 + 1.0f;
+				d10B = d10 + 1.0f;
+				sourceAlpha10 = 1.0;
+			}
+
+			//Add Density color and hue if greater than 0.2
+			if (fluidCube->density[IX(i, j)] >= 0.5) {
+				d00R = d00 + 0.0f;
+				d00G = d00 + 0.0f;
+				d00B = d00 + 1.0f;
+				sourceAlpha00 = 1.0;
+			}
+			else {
+				d00R = d00 + 0.0f;
+				d00G = d00 + 0.0f;
+				d00B = d00 + 0.0f;
+				sourceAlpha00 = 1.0;
+			}
+
+
+			if (fluidCube->density[IX(i, j + 1)] >= 1.0) {
+				d01R = d01 + 0.0f;
+				d01G = d01 + 0.0f;
+				d01B = d01 + 1.0f;
+				sourceAlpha01 = 1.0;
+			}
+			else {
+				d01R = d01 + 0.0f;
+				d01G = d01 + 0.0f;
+				d01B = d01 + 0.0f;
+				sourceAlpha01 = 1.0;
+			}
+
+			if (fluidCube->density[IX(i + 1, j + 1)] >= 1.0) {
+				d11R = d11 + 0.0f;
+				d11G = d11 + 0.0f;
+				d11B = d11 + 1.0f;
+				sourceAlpha11 = 1.0;
+			}
+			else {
+				d11R = d11 + 0.0f;
+				d11G = d11 + 0.0f;
+				d11B = d11 + 0.0f;
+				sourceAlpha11 = 1.0;
+			}
+
+			if (fluidCube->density[IX(i + 1, j)] >= 1.0) {
+				d10R = d10 + 0.0f;
+				d10G = d10 + 0.0f;
+				d10B = d10 + 1.0f;
+				sourceAlpha10 = 1.0;
+			}
+			else {
+				d10R = d10 + 0.0f;
 				d10G = d10 + 0.0f;
 				d10B = d10 + 0.0f;
 				sourceAlpha10 = 1.0;
 			}
 
-
 			// draw density as a cube of quads
 
 			glBegin(GL_QUADS);
-			glColor4f(d00R, d00B, d00G, sourceAlpha00);
+			glColor4f(d00R, d00G, d00B, sourceAlpha00);
 			glVertex3f(x * CELL_SIZE_X, y * CELL_SIZE_Y, 0);
 
-			glColor4f(d01R, d01B, d01G, sourceAlpha01);
+			glColor4f(d01R, d01G, d01B, sourceAlpha01);
 			glVertex3f(x * CELL_SIZE_X, (y + h) * CELL_SIZE_Y, 0);
 
-			glColor4f(d11R, d11B, d11G, sourceAlpha11);
+			glColor4f(d11R, d11G, d11B, sourceAlpha11);
 			glVertex3f((x + h) * CELL_SIZE_X, (y + h) * CELL_SIZE_Y, 0);
 
-			glColor4f(d10R, d10B, d10G, sourceAlpha10);
+			glColor4f(d10R, d10G, d10B, sourceAlpha10);
 			glVertex3f((x + h) * CELL_SIZE_X, y * CELL_SIZE_Y, 0);
 
 			glEnd();
@@ -562,7 +616,8 @@ int main()
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	glEnable(GL_BLEND);
 	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.1f, 0.1f);
-	float totalFluid = 100000;
+	float totalFluid = 5000;
+	float currentFluid = totalFluid;
 	bool running = true; // set running to true
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -576,11 +631,23 @@ int main()
 		//Release Dam
 		if (running)
 		{
-			if (totalFluid > 0) {
-				FluidCubeAddVelocity(fluidCube, 10, 10, 0, 0);
-				fluidCubeAddDensity(fluidCube, 10, 50, 1000);
-				totalFluid -= 1;
-			}			
+			if (currentFluid >= totalFluid) {
+				for (int j = 1; j <= GRID_SIZE; j++) {
+					FluidCubeAddVelocity(fluidCube, 1, j, 100, 0);
+					fluidCubeAddDensity(fluidCube, 1, 25, 1000);
+					fluidCubeAddDensity(fluidCube, 1, 50, 1000);
+					fluidCubeAddDensity(fluidCube, 1, 75, 1000);
+				}
+				currentFluid -= 25;
+			}
+			else {
+					FluidCubeAddVelocity(fluidCube, 1, 25, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 1, 50, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 1, 75, 100, 0);
+					fluidCubeAddDensity(fluidCube, 0, 0, 0);
+					currentFluid += 0.1;
+				
+			}
 			//Add density from bottom to top of the very left hand side of the screen w/ a constant velocity.
 			/*for (int i = 1; i <= 10; i++) {
 				for (int j = 1; j <= GRID_SIZE; j++) {

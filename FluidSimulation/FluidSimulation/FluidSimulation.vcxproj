@@ -90,13 +90,13 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>C:\dev\glfw-3.2.1\include;C:\dev\glew-2.0.0\include;C:\dev\SDL2-2.0.5\include;C:\dev\glm-0.9.8.3\glm;C:\dev\SDL2_ttf\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\dev\glfw-3.2.1\include;C:\dev\glew-2.0.0\include;C:\dev\SDL2-2.0.5\include;C:\dev\glm-0.9.8.3\glm;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;glfw3.lib;SDL2.lib;SDL2main.lib;SDL2_ttf.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\dev\SDL2-2.0.5\lib\x86;C:\dev\glfw-3.2.1\lib-vc2015;C:\dev\glew-2.0.0\lib\Release\Win32;C:\dev\SDL2_ttf\lib\x86;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>opengl32.lib;glu32.lib;glew32.lib;glfw3.lib;SDL2.lib;SDL2main.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>C:\dev\SDL2-2.0.5\lib\x86;C:\dev\glfw-3.2.1\lib-vc2015;C:\dev\glew-2.0.0\lib\Release\Win32;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
