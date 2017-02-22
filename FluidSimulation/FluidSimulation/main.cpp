@@ -449,31 +449,33 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	{
 		float x = (i )*h;//- 0.5f
 		for (int j = 0; j < N; j++) {
-			float y = (j )*h;//- 0.5f
+			float y = (j)*h;//- 0.5f
 			//float density = fluidCube->density[i+j];
 
 			//calculate position of the fluid in the grid
-			d00 = fluidCube->density[IX(i, j)]; 
-			d01 = fluidCube->density[IX(i, j + 1 )];
+			d00 = fluidCube->density[IX(i, j)];
+			d01 = fluidCube->density[IX(i, j + 1)];
 			d11 = fluidCube->density[IX(i + 1, j + 1)];
 			d10 = fluidCube->density[IX(i + 1, j)];
-
-
+			d00R = d10R = d01R = d11R = 0;
+			d00G = d01G = d10G = d11G = 0;
+			d00B = d01B = d10B = d11B = 0;
+			sourceAlpha00 = sourceAlpha10 = sourceAlpha01 = sourceAlpha11 = 1.0;
 
 			//Add Density color and hue if greater than 0.1
 			if (fluidCube->density[IX(i, j)] > 0.1) {
-				d00R = d00 + 0.0f;
-				d00G = d00 + 1.0f;
-				d00B = d00 + 0.0f;
+				d00R = d00 / 100.0f + 0.0f;
+				d00G = d00 / 100.0f + 1.0f;
+				d00B = d00 / 100.0f + 0.0f;
 				sourceAlpha00 = 1.0;
 			}
 			else {
-				d00R = d00 + 1.0f;
-				d00G = d00 + 1.0f;
-				d00B = d00 + 1.0f;
+				d00R = d00 / 100.0f + 0.0f;
+				d00G = d00 / 100.0f + 0.0f;
+				d00B = d00 / 100.0f + 1.0f;
 				sourceAlpha00 = 1.0;
 			}
-
+	/*
 			if (fluidCube->density[IX(i, j + 1)] > 0.1) {
 				d01R = d01 + 0.0f;
 				d01G = d01 + 1.0f;
@@ -481,8 +483,8 @@ void drawFluidDensity(FluidCube* fluidCube) {
 				sourceAlpha01 = 1.0;
 			}
 			else {
-				d01R = d01 + 1.0f;
-				d01G = d01 + 1.0f;
+				d01R = d01 + 0.0f;
+				d01G = d01 + 0.0f;
 				d01B = d01 + 1.0f;
 				sourceAlpha01 = 1.0;
 			}
@@ -494,8 +496,8 @@ void drawFluidDensity(FluidCube* fluidCube) {
 				sourceAlpha11 = 1.0;
 			}
 			else {
-				d11R = d11 + 1.0f;
-				d11G = d11 + 1.0f;
+				d11R = d11 + 0.0f;
+				d11G = d11 + 0.0f;
 				d11B = d11 + 1.0f;
 				sourceAlpha11 = 1.0;
 			}
@@ -507,8 +509,8 @@ void drawFluidDensity(FluidCube* fluidCube) {
 				sourceAlpha10 = 1.0;
 			}
 			else {
-				d10R = d10 + 1.0f;
-				d10G = d10 + 1.0f;
+				d10R = d10 +0.0f;
+				d10G = d10 + 0.0f;
 				d10B = d10 + 1.0f;
 				sourceAlpha10 = 1.0;
 			}
@@ -566,7 +568,7 @@ void drawFluidDensity(FluidCube* fluidCube) {
 				d10B = d10 + 0.0f;
 				sourceAlpha10 = 1.0;
 			}
-
+*/
 			// draw density as a cube of quads
 
 			glBegin(GL_QUADS);
@@ -586,7 +588,7 @@ void drawFluidDensity(FluidCube* fluidCube) {
 
 		}
 	}
-
+	
 
 }
 
@@ -620,6 +622,11 @@ int main()
 	float currentFluid = totalFluid;
 	bool running = true; // set running to true
 
+	FluidCubeAddVelocity(fluidCube, 25, 1, 0, 0);
+	fluidCubeAddDensity(fluidCube, 25, 25, 1000);
+	fluidCubeAddDensity(fluidCube, 25, 50, 1000);
+	fluidCubeAddDensity(fluidCube, 25, 75, 1000);
+
 	SDL_Event sdlEvent;  // variable to detect SDL events
 	while (running) {	// the event loop
 		while (SDL_PollEvent(&sdlEvent)) {
@@ -631,25 +638,22 @@ int main()
 		//Release Dam
 		if (running)
 		{
-			if (currentFluid >= totalFluid) {
+			/*if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					FluidCubeAddVelocity(fluidCube, 1, j, 100, 0);
-					fluidCubeAddDensity(fluidCube, 1, 25, 1000);
-					fluidCubeAddDensity(fluidCube, 1, 50, 1000);
-					fluidCubeAddDensity(fluidCube, 1, 75, 1000);
+					
 				}
 				currentFluid -= 25;
 			}
 			else {
-					FluidCubeAddVelocity(fluidCube, 1, 25, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 1, 50, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 1, 75, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 25, 25, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 25, 50, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 25, 75, 100, 0);
 					fluidCubeAddDensity(fluidCube, 0, 0, 0);
 					currentFluid += 0.1;
 				
 			}
 			//Add density from bottom to top of the very left hand side of the screen w/ a constant velocity.
-			/*for (int i = 1; i <= 10; i++) {
+			for (int i = 1; i <= 10; i++) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
 					
 				}
@@ -681,12 +685,12 @@ int main()
 
 			//If Left Ctrl then add density to area
 			if (sdlEvent.button.button == SDL_SCANCODE_LCTRL) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1);
 			}
 
 			//If Left Shift then deduct density from area (seen as black fluid on display
 			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, -1000);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 0.1);
 			}
 
 			//-----------------MOUSE CONTROLS
