@@ -462,6 +462,8 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			d00B = d01B = d10B = d11B = 0;
 			sourceAlpha00 = sourceAlpha10 = sourceAlpha01 = sourceAlpha11 = 1.0;
 
+			//(TO:DO - input a color rendinering of Spectra, find the correct float value to divide dxxR, dxxG, and dxxB)
+
 			//Add Density color and hue if greater than 0.1
 			if (fluidCube->density[IX(i, j)] > 0.1) {
 				d00R = d00 / 100.0f + 0.0f;
@@ -472,103 +474,103 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			else {
 				d00R = d00 / 100.0f + 0.0f;
 				d00G = d00 / 100.0f + 0.0f;
-				d00B = d00 / 100.0f + 1.0f;
+				d00B = d00 / 100.0f + 0.0f;
 				sourceAlpha00 = 1.0;
 			}
-	/*
+	
 			if (fluidCube->density[IX(i, j + 1)] > 0.1) {
-				d01R = d01 + 0.0f;
-				d01G = d01 + 1.0f;
-				d01B = d01 + 0.0f;
+				d01R = d01 / 100.0f + 0.0f;
+				d01G = d01 / 100.0f + 1.0f;
+				d01B = d01 / 100.0f + 0.0f;
 				sourceAlpha01 = 1.0;
 			}
 			else {
-				d01R = d01 + 0.0f;
-				d01G = d01 + 0.0f;
-				d01B = d01 + 1.0f;
+				d01R = d01 / 100.0f + 0.0f;
+				d01G = d01 / 100.0f + 0.0f;
+				d01B = d01 / 100.0f + 1.0f;
 				sourceAlpha01 = 1.0;
 			}
 
 			if (fluidCube->density[IX(i + 1, j + 1)] > 0.1) {
-				d11R = d11 + 0.0f;
-				d11G = d11 + 1.0f;
-				d11B = d11 + 0.0f;
+				d11R = d11 / 100.0f + 0.0f;
+				d11G = d11 / 100.0f + 1.0f;
+				d11B = d11 / 100.0f + 0.0f;
 				sourceAlpha11 = 1.0;
 			}
 			else {
-				d11R = d11 + 0.0f;
-				d11G = d11 + 0.0f;
-				d11B = d11 + 1.0f;
+				d11R = d11 / 100.0f + 0.0f;
+				d11G = d11 / 100.0f + 0.0f;
+				d11B = d11 / 100.0f + 1.0f;
 				sourceAlpha11 = 1.0;
 			}
 
 			if (fluidCube->density[IX(i + 1, j)] > 0.1) {
-				d10R = d10 + 0.0f;
-				d10G = d10 + 1.0f;
-				d10B = d10 + 0.0f;
+				d10R = d10 / 100.0f + 0.0f;
+				d10G = d10 / 100.0f + 1.0f;
+				d10B = d10 / 100.0f + 0.0f;
 				sourceAlpha10 = 1.0;
 			}
 			else {
-				d10R = d10 +0.0f;
-				d10G = d10 + 0.0f;
-				d10B = d10 + 1.0f;
+				d10R = d10 / 100.0f +0.0f;
+				d10G = d10 / 100.0f + 0.0f;
+				d10B = d10 / 100.0f + 1.0f;
 				sourceAlpha10 = 1.0;
 			}
 
 			//Add Density color and hue if greater than 0.2
 			if (fluidCube->density[IX(i, j)] >= 0.5) {
-				d00R = d00 + 0.0f;
-				d00G = d00 + 0.0f;
-				d00B = d00 + 1.0f;
+				d00R = d00 / 100.0f + 0.0f;
+				d00G = d00 / 100.0f + 0.0f;
+				d00B = d00 / 100.0f + 1.0f;
 				sourceAlpha00 = 1.0;
 			}
 			else {
-				d00R = d00 + 0.0f;
-				d00G = d00 + 0.0f;
-				d00B = d00 + 0.0f;
+				d00R = d00 / 100.0f + 0.0f;
+				d00G = d00 / 100.0f + 0.0f;
+				d00B = d00 / 100.0f + 0.0f;
 				sourceAlpha00 = 1.0;
 			}
 
 
-			if (fluidCube->density[IX(i, j + 1)] >= 1.0) {
-				d01R = d01 + 0.0f;
-				d01G = d01 + 0.0f;
-				d01B = d01 + 1.0f;
+			if (fluidCube->density[IX(i, j + 1)] >= 0.5) {
+				d01R = d01 / 100.0f + 0.0f;
+				d01G = d01 / 100.0f + 0.0f;
+				d01B = d01 / 100.0f + 1.0f;
 				sourceAlpha01 = 1.0;
 			}
 			else {
-				d01R = d01 + 0.0f;
-				d01G = d01 + 0.0f;
-				d01B = d01 + 0.0f;
+				d01R = d01 / 100.0f + 0.0f;
+				d01G = d01 / 100.0f + 0.0f;
+				d01B = d01 / 100.0f + 0.0f;
 				sourceAlpha01 = 1.0;
 			}
 
-			if (fluidCube->density[IX(i + 1, j + 1)] >= 1.0) {
-				d11R = d11 + 0.0f;
-				d11G = d11 + 0.0f;
-				d11B = d11 + 1.0f;
+			if (fluidCube->density[IX(i + 1, j + 1)] >= 0.5) {
+				d11R = d11 / 100.0f + 0.0f;
+				d11G = d11 / 100.0f + 0.0f;
+				d11B = d11 / 100.0f + 1.0f;
 				sourceAlpha11 = 1.0;
 			}
 			else {
-				d11R = d11 + 0.0f;
-				d11G = d11 + 0.0f;
-				d11B = d11 + 0.0f;
+				d11R = d11 / 100.0f + 0.0f;
+				d11G = d11 / 100.0f + 0.0f;
+				d11B = d11 / 100.0f + 0.0f;
 				sourceAlpha11 = 1.0;
 			}
 
-			if (fluidCube->density[IX(i + 1, j)] >= 1.0) {
-				d10R = d10 + 0.0f;
-				d10G = d10 + 0.0f;
-				d10B = d10 + 1.0f;
+			if (fluidCube->density[IX(i + 1, j)] >= 0.5) {
+				d10R = d10 / 100.0f + 0.0f;
+				d10G = d10 / 100.0f + 0.0f;
+				d10B = d10 / 100.0f + 1.0f;
 				sourceAlpha10 = 1.0;
 			}
 			else {
-				d10R = d10 + 0.0f;
-				d10G = d10 + 0.0f;
-				d10B = d10 + 0.0f;
+				d10R = d10 / 100.0f + 0.0f;
+				d10G = d10 / 100.0f + 0.0f;
+				d10B = d10 / 100.0f + 0.0f;
 				sourceAlpha10 = 1.0;
 			}
-*/
+
 			// draw density as a cube of quads
 
 			glBegin(GL_QUADS);
@@ -622,10 +624,7 @@ int main()
 	float currentFluid = totalFluid;
 	bool running = true; // set running to true
 
-	FluidCubeAddVelocity(fluidCube, 25, 1, 0, 0);
-	fluidCubeAddDensity(fluidCube, 25, 25, 1000);
-	fluidCubeAddDensity(fluidCube, 25, 50, 1000);
-	fluidCubeAddDensity(fluidCube, 25, 75, 1000);
+	
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
 	while (running) {	// the event loop
@@ -635,12 +634,15 @@ int main()
 		}
 		const Uint8 *keys = SDL_GetKeyboardState(NULL);
 		
-		//Release Dam
+		//Release Dam 
 		if (running)
 		{
-			/*if (currentFluid >= totalFluid) {
+			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					
+					FluidCubeAddVelocity(fluidCube, 25, j, 0, 0);
+					fluidCubeAddDensity(fluidCube, 25, 25, 1000);
+					fluidCubeAddDensity(fluidCube, 25, 50, 1000);
+					fluidCubeAddDensity(fluidCube, 25, 75, 1000);
 				}
 				currentFluid -= 25;
 			}
@@ -652,7 +654,7 @@ int main()
 					currentFluid += 0.1;
 				
 			}
-			//Add density from bottom to top of the very left hand side of the screen w/ a constant velocity.
+			/*//Add density from bottom to top of the very left hand side of the screen w/ a constant velocity.
 			for (int i = 1; i <= 10; i++) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
 					
