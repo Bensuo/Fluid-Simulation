@@ -457,12 +457,14 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			d01 = fluidCube->density[IX(i, j + 1)];
 			d11 = fluidCube->density[IX(i + 1, j + 1)];
 			d10 = fluidCube->density[IX(i + 1, j)];
+
+			//Initialize all dxxR, dxxG, dxxB and sourceAlphaxx
 			d00R = d10R = d01R = d11R = 0;
 			d00G = d01G = d10G = d11G = 0;
 			d00B = d01B = d10B = d11B = 0;
 			sourceAlpha00 = sourceAlpha10 = sourceAlpha01 = sourceAlpha11 = 1.0;
 
-			//(TO:DO - input a color rendinering of Spectra, find the correct float value to divide dxxR, dxxG, and dxxB)
+			//(TO:DO - input a color rendinering of Spectra using lookAt(), find the correct float value to divide dxxR, dxxG, and dxxB)
 
 			//Add Density color and hue if greater than 0.1
 			if (fluidCube->density[IX(i, j)] > 0.1) {
