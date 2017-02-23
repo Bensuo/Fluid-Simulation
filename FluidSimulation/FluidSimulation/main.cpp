@@ -13,6 +13,9 @@ using namespace std;
 
 #define CELL_SIZE 10 //Distance between each vertex point building one square cell.
 #define GRID_SIZE 100 //Number of cells in the grid. 
+
+/*WARNING: Do NOT change the display_Size_X and Y upwards unless you have a beast of a computer*/
+
 #define DISPLAY_SIZE_X 1280 // Size of display on x cords.
 #define DISPLAY_SIZE_Y 720 // Size of display on y cords.
 #define MAX_COLOR 1024
@@ -213,9 +216,6 @@ void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 
 	dt0 = dt * N; // delta time * size
 
-	/*
-	
-	*/
 	for (i = 1; i <= N; i++) {
 		for (j = 1; j <= N; j++) {
 			x = i - dt0*u[IX(i, j)]; y = j - dt0*v[IX(i, j)];
@@ -301,16 +301,16 @@ void project(int N, float *u, float *v, float *p, float *div) {
 	set_bnd(0, div, N);
 	set_bnd(0, p, N);
 
-	// why 20?
+	// why 20? = becase the value P changes as we progress through the computation
 	for (int k = 0; k < 20; k++)
 	{
 		for (int i = 1; i <= N; i++)
 		{
 			for (int j = 1; j <= N; j++)
 			{
-				// why are we doing same calc 20x? We reset I and J to 1, 20x.
+				// Reset I and J to 1, 20x.
 				// compute and sets array of current velocity for X
-				//P value changes as we progress through computation.
+				// P value changes as we progress through computation.
 				p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) / 4;
 			}
 		}
@@ -405,12 +405,12 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 	float *Vy = fluidCube->Vy;
 	float cellSize = CELL_SIZE;
 
-	glLineWidth(3.0f);
+	glLineWidth(5.0f);
 
 	int velocityMultiplier = 30;
-
 	float highestVelocity = 0;
-	glBegin(GL_LINES);
+	
+	
 	
 	for (i = 1; i <= N; i++) {
 		x = (i) * h;
@@ -420,21 +420,27 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 			int pointVeloX = Vx[IX(i, j)];
 			int pointVeloY = Vy[IX(i, j)];
 
-			float iniCv = pointVeloX + pointVeloY;
-			if (highestVelocity < abs(iniCv))
-				highestVelocity = iniCv;
+			// Syntax int d00C = round(d00 / 500 * (MAX_COLOR - 1));
 
-			int finalCv = round(iniCv/100 * (MAX_COLOR - 1));
+			/*Initial Color Value*/
+			float iniCv = pointVeloX + pointVeloY; 
+			if (highestVelocity < abs(iniCv)) //Absolute Value of Initial Color Value
+				highestVelocity = iniCv; //Set Highest Velocity = Initial Color Value
 
+			/*Final Color Value*/
+			int finalCv = round(iniCv/500 * (MAX_COLOR - 1)); 
 
 			int actualX = x - Vx[IX(i, j)]; 
 			int actualY = y - Vy[IX(i, j)];
 
-			
+			/*Add Point Velocity*/
 			int addPointVelo = pointVeloX + pointVeloY;
+
+			glBegin(GL_LINES);
 
 			glColor3f(colorRange[finalCv]->r, colorRange[finalCv]->g, colorRange[finalCv]->b);
 			glVertex2f(x*CELL_SIZE_X, y*CELL_SIZE_Y);
+			glColor3f(0.0f, 0.0f, 0.0f);
 			glVertex2f((x * CELL_SIZE_X + (Vx[IX(i, j)] * velocityMultiplier)) , (y * CELL_SIZE_Y + (Vy[IX(i, j)] * velocityMultiplier)) );
 		}
 	}
@@ -460,12 +466,11 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	float highestDensity = 0;
 	for (int i = 0; i < N; i++)
 	{
-		float x = (i )*h;//- 0.5f
+		float x = (i )*h;
 		for (int j = 0; j < N; j++) {
-			float y = (j)*h;//- 0.5f
-			//float density = fluidCube->density[i+j];
+			float y = (j)*h;
 
-			//calculate position of the fluid in the grid
+			//Compute position of the fluid in the grid
 			d00 = fluidCube->density[IX(i, j)];
 			d01 = fluidCube->density[IX(i, j + 1)];
 			d11 = fluidCube->density[IX(i + 1, j + 1)];
@@ -490,21 +495,24 @@ void drawFluidDensity(FluidCube* fluidCube) {
 			d00B = d01B = d10B = d11B = 0.0;
 			sourceAlpha00 = sourceAlpha10 = sourceAlpha01 = sourceAlpha11 = 0.3;
 
-			//(TO:DO - input a color rendinering of Spectra using lookAt(), find the correct float value to divide dxxR, dxxG, and dxxB)
-
-			if (highestDensity < d00)
+			if (highestDensity < d00) {
 				highestDensity = d00;
-			if (highestDensity < d01)
+			}
+				
+			if (highestDensity < d01) {
 				highestDensity = d01;
-			if (highestDensity < d11)
+			}
+				
+			if (highestDensity < d11) {
 				highestDensity = d11;
-			if (highestDensity < d10)
+			}
+				
+			if (highestDensity < d10) {
 				highestDensity = d10;
 
+			}
 
-			
-
-			// draw density as a cube of quads
+			// Draw density Quads
 
 			glBegin(GL_QUADS);
 			glColor4f(colorRange[d00C]->r, colorRange[d00C]->g, colorRange[d00C]->b, sourceAlpha00);
@@ -534,6 +542,7 @@ SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
 //TTF_Font* gFont = NULL;
 
+//Add color spectra interperlation to the simulation. 
 void initColors() {
 	float R = 0.0f, G = 0.0f, B = 0.0f;
 	int totalChanges = 4;
@@ -589,7 +598,10 @@ int main()
 	SDL_GLContext context = SDL_GL_CreateContext(gWindow); //Create OpenGL Context and binds the gWindow to SDL.
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	glEnable(GL_BLEND);
-	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.5f, 0.1f);
+
+	//Create Fluid Cube 
+	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.1f, 0.1f);
+
 	float totalFluid = 5000;
 	float currentFluid = totalFluid;
 	bool running = true; // set running to true
@@ -604,22 +616,22 @@ int main()
 		}
 		const Uint8 *keys = SDL_GetKeyboardState(NULL);
 		
-		//Release Dam 
+		//Release Dam Effect
 		if (running)
 		{
 			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					FluidCubeAddVelocity(fluidCube, 25, j, 0, 0);
-					fluidCubeAddDensity(fluidCube, 25, 25, 10000);
-					fluidCubeAddDensity(fluidCube, 25, 50, 10000);
-					fluidCubeAddDensity(fluidCube, 25, 75, 10000);
+					FluidCubeAddVelocity(fluidCube, 5, j, 0, 0);
+					fluidCubeAddDensity(fluidCube, 5, 25, 10000);
+					fluidCubeAddDensity(fluidCube, 5, 50, 10000);
+					fluidCubeAddDensity(fluidCube, 5, 75, 10000);
 				}
-				currentFluid -= 50;
+				currentFluid -= 25;
 			}
 			else {
-					FluidCubeAddVelocity(fluidCube, 25, 25, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 25, 50, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 25, 75, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 25, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 50, 100, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 75, 100, 0);
 					fluidCubeAddDensity(fluidCube, 0, 0, 0);
 					currentFluid += 0.1;
 			
@@ -677,8 +689,6 @@ int main()
 		//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
 
-		
-		//TODO: Proper drawing code
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -692,11 +702,12 @@ int main()
 		drawFluidDensity(fluidCube);
 		drawFluidVelocity(fluidCube);
 
-		SDL_GL_SwapWindow(gWindow); // swap buffers
+		SDL_GL_SwapWindow(gWindow); // Swap buffers
 	}
 
+	/*IMPORTANT! - DO NOT ALTER BELOW - WILL CAUSE MEMORY LEAK*/
 	for (int i = 0; i < MAX_COLOR; i++) {
-		delete colorRange[i];
+		delete colorRange[i]; 
 	}
 	return 0;
 }
