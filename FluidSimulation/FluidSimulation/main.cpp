@@ -11,13 +11,24 @@ using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y)) 
 
+/*WARNING: Do NOT change the CELL_SIZE and GRID_SIZE upwards unless you have a beast of a computer*/
+
 #define CELL_SIZE 10 //Distance between each vertex point building one square cell.
 #define GRID_SIZE 100 //Number of cells in the grid. 
+
+/*WARNING: Do NOT change the display_Size_X and Y upwards unless you have a beast of a computer*/
+
 #define DISPLAY_SIZE_X 1280 // Size of display on x cords.
-#define DISPLAY_SIZE_Y 720 // Size of display on y cords. 
+#define DISPLAY_SIZE_Y 720 // Size of display on y cords.
+#define MAX_COLOR 1024
 
 //Global Variables
 
+struct color {
+	float r, g, b;
+};
+
+color *colorRange[MAX_COLOR];
 int x, y;
 
 //Mouse position
@@ -207,9 +218,6 @@ void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 
 	dt0 = dt * N; // delta time * size
 
-	/*
-	
-	*/
 	for (i = 1; i <= N; i++) {
 		for (j = 1; j <= N; j++) {
 			x = i - dt0*u[IX(i, j)]; y = j - dt0*v[IX(i, j)];
@@ -295,16 +303,16 @@ void project(int N, float *u, float *v, float *p, float *div) {
 	set_bnd(0, div, N);
 	set_bnd(0, p, N);
 
-	// why 20?
+	// why 20? = becase the value P changes as we progress through the computation
 	for (int k = 0; k < 20; k++)
 	{
 		for (int i = 1; i <= N; i++)
 		{
 			for (int j = 1; j <= N; j++)
 			{
-				// why are we doing same calc 20x? We reset I and J to 1, 20x.
+				// Reset I and J to 1, 20x.
 				// compute and sets array of current velocity for X
-				//P value changes as we progress through computation.
+				// P value changes as we progress through computation.
 				p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) / 4;
 			}
 		}
@@ -386,6 +394,8 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	diffuse(N, 0, s, density, diff, dt); //computes diffusion for next step in grid
 	advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step. 
 
+	//TO:DO - Add rigid body step here.
+
 	getForces(N, s, Vx0, Vy0); //Do all of above and then reset velocity and density to 0 for x and y
 }
 
@@ -398,36 +408,59 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 	float *Vx = fluidCube->Vx;
 	float *Vy = fluidCube->Vy;
 	float cellSize = CELL_SIZE;
+	float sourceAlpha = 0.05;
 
-	glLineWidth(2.0f);
-
-	int velocityMultiplier = 10;
-
-
-	glBegin(GL_LINES);
+	int velocityMultiplier = 5;
+	float highestVelocity = 0.0;
+	int finalCv = 0;
+	
 	
 	for (i = 1; i <= N; i++) {
 		x = (i) * h;
 		for (j = 1; j <= N; j++) {
 			y = (j) * h;
 
-			int pointVeloX = Vx[IX(i, j)];
-			int pointVeloY = Vy[IX(i, j)];
+			float pointVeloX = Vx[IX(i, j)];
+			float pointVeloY = Vy[IX(i, j)];
+
+			/*Initial Color Value*/
+			float iniCv = pointVeloX + pointVeloY; 
+			if (highestVelocity < abs(iniCv)) //Absolute Value of Initial Color Value
+				highestVelocity = iniCv; //Set Highest Velocity = Initial Color Value
+
+			/*Final Color Value*/
+			int finalCv = abs(round(iniCv/0.5 * (MAX_COLOR - 1))); 
+
+			/*Clamp FinalCv MAX_COLOR */
+			if (finalCv > MAX_COLOR - 1) {
+				finalCv = MAX_COLOR - 1;
+			} else if (finalCv < MAX_COLOR - (MAX_COLOR - 1)) {
+				finalCv = 0;
+			}
+				
 
 			int actualX = x - Vx[IX(i, j)]; 
 			int actualY = y - Vy[IX(i, j)];
 
-			
+			/*Add Point Velocity*/
 			int addPointVelo = pointVeloX + pointVeloY;
 
-			glColor3f(1.0f, 1.0f, 1.0f);
+			glLineWidth(iniCv * velocityMultiplier);
+
+
+			glBegin(GL_LINES);
+			/*Set Color and SourceAlpha intensity based on Velocity*/
+			glColor4f(colorRange[finalCv]->r, colorRange[finalCv]->g, colorRange[finalCv]->b, sourceAlpha);  
+			/*Set points for velocity line*/
 			glVertex2f(x*CELL_SIZE_X, y*CELL_SIZE_Y);
-			glColor3f(1.0, 0.0, (addPointVelo / 10.0));
+			/*Set gradient starting color for each velocity line*/
+			glColor3f(0.0f, 0.0f, 0.0f);
+			/*Set width and length and direction of velocity line. */
 			glVertex2f((x * CELL_SIZE_X + (Vx[IX(i, j)] * velocityMultiplier)) , (y * CELL_SIZE_Y + (Vy[IX(i, j)] * velocityMultiplier)) );
 		}
 	}
 	glEnd();
-
+	//std::cout << "Highest Velocity Value: " << highestVelocity << endl;
 }
 
 void drawFluidDensity(FluidCube* fluidCube) {
@@ -435,7 +468,7 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	int N = fluidCube->size;
 	int size = N*N;
 	float h = 1.0f;
-	float sourceAlpha = 0.5;
+	float sourceAlpha = 0.05;
 	float sourceAlpha00 = 0.05;
 	float sourceAlpha01 = 0.05;
 	float sourceAlpha10 = 0.05;
@@ -445,155 +478,98 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	float d00G, d01G, d10G, d11G;
 	float d00B, d01B, d10B, d11B;
 
+	float highestDensity = 0;
 	for (int i = 0; i < N; i++)
 	{
-		float x = (i )*h;//- 0.5f
+		float x = (i )*h;
 		for (int j = 0; j < N; j++) {
-			float y = (j)*h;//- 0.5f
-			//float density = fluidCube->density[i+j];
+			float y = (j)*h;
 
-			//calculate position of the fluid in the grid
+			//Compute position of the fluid in the grid
 			d00 = fluidCube->density[IX(i, j)];
 			d01 = fluidCube->density[IX(i, j + 1)];
 			d11 = fluidCube->density[IX(i + 1, j + 1)];
 			d10 = fluidCube->density[IX(i + 1, j)];
 
+			int d00C = round(d00 / 500 * (MAX_COLOR - 1));
+			int d01C = round(d01 / 500 * (MAX_COLOR - 1));
+			int d11C = round(d11 / 500 * (MAX_COLOR - 1));
+			int d10C = round(d10 / 500 * (MAX_COLOR - 1));
+
+			/*Clamp D00C Max Color */
+			if (d00C > MAX_COLOR - 1) {
+				d00C = MAX_COLOR - 1;
+			} else if (d00C < MAX_COLOR - (MAX_COLOR - 1)) {
+				d00C = 0;
+			}
+				
+			/*Clamp D01C Max Color */
+			if (d01C > MAX_COLOR - 1) {
+				d01C = MAX_COLOR - 1;
+			} else if (d01C <  MAX_COLOR - ( MAX_COLOR - 1)) {
+				d01C = 0;
+			}
+				
+			/*Clamp D11C Max Color for */
+			if (d11C > MAX_COLOR - 1) {
+				d11C = MAX_COLOR - 1;
+			}
+			else if (d11C < MAX_COLOR - (MAX_COLOR - 1)) {
+				d11C = 0;
+			}
+				
+			/*Clamp D10C Max Color */
+			if (d10C > MAX_COLOR - 1) {
+				d10C = MAX_COLOR - 1;
+			}
+			else if (d10C < MAX_COLOR - ( MAX_COLOR - 1)) {
+				d10C = 0;
+			}
+
 			//Initialize all dxxR, dxxG, dxxB and sourceAlphaxx
-			d00R = d10R = d01R = d11R = 0;
-			d00G = d01G = d10G = d11G = 0;
-			d00B = d01B = d10B = d11B = 0;
-			sourceAlpha00 = sourceAlpha10 = sourceAlpha01 = sourceAlpha11 = 1.0;
+			d00R = d10R = d01R = d11R = 0.0;
+			d00G = d01G = d10G = d11G = 0.0;
+			d00B = d01B = d10B = d11B = 0.0;
+			sourceAlpha00 = sourceAlpha10 = sourceAlpha01 = sourceAlpha11 = 0.3;
 
-			//(TO:DO - input a color rendinering of Spectra using lookAt(), find the correct float value to divide dxxR, dxxG, and dxxB)
+			if (highestDensity < d00) {
+				highestDensity = d00;
+			}
+				
+			if (highestDensity < d01) {
+				highestDensity = d01;
+			}
+				
+			if (highestDensity < d11) {
+				highestDensity = d11;
+			}
+				
+			if (highestDensity < d10) {
+				highestDensity = d10;
 
-			//Add Density color and hue if greater than 0.1
-			if (fluidCube->density[IX(i, j)] > 0.1) {
-				d00R = d00 / 100.0f + 0.0f;
-				d00G = d00 / 100.0f + 1.0f;
-				d00B = d00 / 100.0f + 0.0f;
-				sourceAlpha00 = 1.0;
-			}
-			else {
-				d00R = d00 / 100.0f + 0.0f;
-				d00G = d00 / 100.0f + 0.0f;
-				d00B = d00 / 100.0f + 0.0f;
-				sourceAlpha00 = 1.0;
-			}
-	
-			if (fluidCube->density[IX(i, j + 1)] > 0.1) {
-				d01R = d01 / 100.0f + 0.0f;
-				d01G = d01 / 100.0f + 1.0f;
-				d01B = d01 / 100.0f + 0.0f;
-				sourceAlpha01 = 1.0;
-			}
-			else {
-				d01R = d01 / 100.0f + 0.0f;
-				d01G = d01 / 100.0f + 0.0f;
-				d01B = d01 / 100.0f + 1.0f;
-				sourceAlpha01 = 1.0;
 			}
 
-			if (fluidCube->density[IX(i + 1, j + 1)] > 0.1) {
-				d11R = d11 / 100.0f + 0.0f;
-				d11G = d11 / 100.0f + 1.0f;
-				d11B = d11 / 100.0f + 0.0f;
-				sourceAlpha11 = 1.0;
-			}
-			else {
-				d11R = d11 / 100.0f + 0.0f;
-				d11G = d11 / 100.0f + 0.0f;
-				d11B = d11 / 100.0f + 1.0f;
-				sourceAlpha11 = 1.0;
-			}
-
-			if (fluidCube->density[IX(i + 1, j)] > 0.1) {
-				d10R = d10 / 100.0f + 0.0f;
-				d10G = d10 / 100.0f + 1.0f;
-				d10B = d10 / 100.0f + 0.0f;
-				sourceAlpha10 = 1.0;
-			}
-			else {
-				d10R = d10 / 100.0f +0.0f;
-				d10G = d10 / 100.0f + 0.0f;
-				d10B = d10 / 100.0f + 1.0f;
-				sourceAlpha10 = 1.0;
-			}
-
-			//Add Density color and hue if greater than 0.2
-			if (fluidCube->density[IX(i, j)] >= 0.5) {
-				d00R = d00 / 100.0f + 0.0f;
-				d00G = d00 / 100.0f + 0.0f;
-				d00B = d00 / 100.0f + 1.0f;
-				sourceAlpha00 = 1.0;
-			}
-			else {
-				d00R = d00 / 100.0f + 0.0f;
-				d00G = d00 / 100.0f + 0.0f;
-				d00B = d00 / 100.0f + 0.0f;
-				sourceAlpha00 = 1.0;
-			}
-
-
-			if (fluidCube->density[IX(i, j + 1)] >= 0.5) {
-				d01R = d01 / 100.0f + 0.0f;
-				d01G = d01 / 100.0f + 0.0f;
-				d01B = d01 / 100.0f + 1.0f;
-				sourceAlpha01 = 1.0;
-			}
-			else {
-				d01R = d01 / 100.0f + 0.0f;
-				d01G = d01 / 100.0f + 0.0f;
-				d01B = d01 / 100.0f + 0.0f;
-				sourceAlpha01 = 1.0;
-			}
-
-			if (fluidCube->density[IX(i + 1, j + 1)] >= 0.5) {
-				d11R = d11 / 100.0f + 0.0f;
-				d11G = d11 / 100.0f + 0.0f;
-				d11B = d11 / 100.0f + 1.0f;
-				sourceAlpha11 = 1.0;
-			}
-			else {
-				d11R = d11 / 100.0f + 0.0f;
-				d11G = d11 / 100.0f + 0.0f;
-				d11B = d11 / 100.0f + 0.0f;
-				sourceAlpha11 = 1.0;
-			}
-
-			if (fluidCube->density[IX(i + 1, j)] >= 0.5) {
-				d10R = d10 / 100.0f + 0.0f;
-				d10G = d10 / 100.0f + 0.0f;
-				d10B = d10 / 100.0f + 1.0f;
-				sourceAlpha10 = 1.0;
-			}
-			else {
-				d10R = d10 / 100.0f + 0.0f;
-				d10G = d10 / 100.0f + 0.0f;
-				d10B = d10 / 100.0f + 0.0f;
-				sourceAlpha10 = 1.0;
-			}
-
-			// draw density as a cube of quads
+			// Draw density Quads
 
 			glBegin(GL_QUADS);
-			glColor4f(d00R, d00G, d00B, sourceAlpha00);
+			glColor4f(colorRange[d00C]->r, colorRange[d00C]->g, colorRange[d00C]->b, sourceAlpha00);
 			glVertex3f(x * CELL_SIZE_X, y * CELL_SIZE_Y, 0);
 
-			glColor4f(d01R, d01G, d01B, sourceAlpha01);
+			glColor4f(colorRange[d01C]->r, colorRange[d01C]->g, colorRange[d01C]->b, sourceAlpha01);
 			glVertex3f(x * CELL_SIZE_X, (y + h) * CELL_SIZE_Y, 0);
 
-			glColor4f(d11R, d11G, d11B, sourceAlpha11);
+			glColor4f(colorRange[d11C]->r, colorRange[d11C]->g, colorRange[d11C]->b, sourceAlpha11);
 			glVertex3f((x + h) * CELL_SIZE_X, (y + h) * CELL_SIZE_Y, 0);
 
-			glColor4f(d10R, d10G, d10B, sourceAlpha10);
+			glColor4f(colorRange[d10C]->r, colorRange[d10C]->g, colorRange[d10C]->b, sourceAlpha10);
 			glVertex3f((x + h) * CELL_SIZE_X, y * CELL_SIZE_Y, 0);
 
 			glEnd();
+			glColor4f(0,0, 0, 1);
 
 		}
 	}
-	
-
+	//cout << "Highest Density Value: " << highestDensity << endl;
 }
 
 //Window settings
@@ -601,12 +577,48 @@ const int SCREEN_WIDTH = DISPLAY_SIZE_X;
 const int SCREEN_HEIGHT = DISPLAY_SIZE_Y;
 SDL_Window* gWindow = NULL;
 SDL_Renderer* gRenderer = NULL;
-//TTF_Font* gFont = NULL;
+
+//Add color spectra interperlation to the simulation. 
+void initColors() {
+	float R = 0.0f, G = 0.0f, B = 0.0f;
+	int totalChanges = 4;
+	float step = (float) totalChanges/ MAX_COLOR;
+	int change = 0;
+	for (int i = 0; i < MAX_COLOR; i++) {
+		colorRange[i] = new color();
+		colorRange[i]->r = R;
+		colorRange[i]->b = B;
+		colorRange[i]->g = G;
+		if (change == 0) {
+			G += step;
+		}
+		else if(change == 1) {
+			R += step;
+			G -= step;
+			
+		}
+		else if(change == 2){
+			B += step;
+		}
+		else {
+			R -= step;
+		}
+
+		if (i > MAX_COLOR / totalChanges * 1)
+			change = 1;
+		if (i > MAX_COLOR / totalChanges * 2)
+			change = 2;
+		if (i >  MAX_COLOR / totalChanges * 3)
+			change = 3;
+		
+	}
+}
 
 int main()
 {
+	initColors(); //Initiate Color Spectra
+	
 	SDL_Init(SDL_INIT_VIDEO);
-	//TTF_Init();
 
 	// Request an OpenGL 3.0 context.
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -621,7 +633,11 @@ int main()
 	SDL_GLContext context = SDL_GL_CreateContext(gWindow); //Create OpenGL Context and binds the gWindow to SDL.
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	glEnable(GL_BLEND);
-	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.1f, 0.1f);
+
+	/* FluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time */
+	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
+
+
 	float totalFluid = 5000;
 	float currentFluid = totalFluid;
 	bool running = true; // set running to true
@@ -636,32 +652,24 @@ int main()
 		}
 		const Uint8 *keys = SDL_GetKeyboardState(NULL);
 		
-		//Release Dam 
+		//Release Dam Effect (In Intervals)
 		if (running)
 		{
 			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					FluidCubeAddVelocity(fluidCube, 25, j, 0, 0);
-					fluidCubeAddDensity(fluidCube, 25, 25, 1000);
-					fluidCubeAddDensity(fluidCube, 25, 50, 1000);
-					fluidCubeAddDensity(fluidCube, 25, 75, 1000);
+					FluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
+					fluidCubeAddDensity(fluidCube, 5, j, 10000);
+					fluidCubeAddDensity(fluidCube, 5, j, 10000);
+					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 				}
-				currentFluid -= 25;
+				currentFluid -= 50;
 			}
 			else {
-					FluidCubeAddVelocity(fluidCube, 25, 25, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 25, 50, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 25, 75, 100, 0);
-					fluidCubeAddDensity(fluidCube, 0, 0, 0);
 					currentFluid += 0.1;
-				
 			}
-			/*//Add density from bottom to top of the very left hand side of the screen w/ a constant velocity.
-			for (int i = 1; i <= 10; i++) {
-				for (int j = 1; j <= GRID_SIZE; j++) {
-					
-				}
-			}*/
 			
 		}
 
@@ -689,24 +697,24 @@ int main()
 
 			//If Left Ctrl then add density to area
 			if (sdlEvent.button.button == SDL_SCANCODE_LCTRL) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 10000);
 			}
 
 			//If Left Shift then deduct density from area (seen as black fluid on display
 			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 0.1);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100000);
 			}
 
 			//-----------------MOUSE CONTROLS
 
 			//If the left mouse button is pressed then velocity direction goes left
 			if (sdlEvent.button.button == SDL_BUTTON_LEFT) {
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -1000.0f, 0);
+				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
 			}
 			
 			//If the right mouse button is pressed then velocity direction goes right
 			if(sdlEvent.button.button == SDL_BUTTON_RIGHT){
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000.0f, 0);
+				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
 
 			}
 
@@ -715,10 +723,8 @@ int main()
 		//TODO: Some timestep stuff
 		FluidCubeTimeStep(fluidCube);
 
-		
-		//TODO: Proper drawing code
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 		glMatrixMode(GL_MODELVIEW); //Model Matrix
 		glLoadIdentity(); //Identity Matrix
@@ -730,7 +736,12 @@ int main()
 		drawFluidDensity(fluidCube);
 		drawFluidVelocity(fluidCube);
 
-		SDL_GL_SwapWindow(gWindow); // swap buffers
+		SDL_GL_SwapWindow(gWindow); // Swap buffers
+	}
+
+	/*IMPORTANT! - DO NOT ALTER BELOW - WILL CAUSE MEMORY LEAK*/
+	for (int i = 0; i < MAX_COLOR; i++) {
+		delete colorRange[i]; 
 	}
 	return 0;
 }
