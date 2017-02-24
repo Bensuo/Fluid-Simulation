@@ -759,16 +759,18 @@ int main()
 
 			//-----------------KEYBOARD CONTROLS
 
-			//If 'Left Ctrl' then add density to area (10,000)
+			//If 'Left Ctrl' then add density to area (100,000)
 			if (sdlEvent.button.button == SDL_SCANCODE_LCTRL) {
+				densityAdded = true;
 				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100000);
 				sdlEvent.key.repeat = 1;
 				cout << "Density amount added: 100,000" << endl;
 				sdlEvent.key.repeat = 1;
+				densityAdded = false;
 				cout << lineBreak << endl << endl;
 			}
 
-			//If 'Left Shift' then add density to area (100,000) 
+			//If 'Left Shift' then add density to area (1,000,000) 
 			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT && SDL_KEYDOWN) {
 				densityAdded = true;
 				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000000);
