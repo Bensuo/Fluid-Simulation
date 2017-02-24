@@ -403,13 +403,16 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 	float h = 1.0f;
 	float *Vx = fluidCube->Vx;
 	float *Vy = fluidCube->Vy;
+	//std::cout << "Vx: " << *Vx << endl;
+	//std::cout << "Vy: " << *Vy << endl;
 	float cellSize = CELL_SIZE;
+	float sourceAlpha = 0.05;
 
 	glLineWidth(5.0f);
 
 	int velocityMultiplier = 30;
-	float highestVelocity = 0;
-	
+	float highestVelocity;
+	int finalCv;
 	
 	
 	for (i = 1; i <= N; i++) {
@@ -429,6 +432,8 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 
 			/*Final Color Value*/
 			int finalCv = round(iniCv/500 * (MAX_COLOR - 1)); 
+			if (finalCv > MAX_COLOR - 1)
+				finalCv = MAX_COLOR - 1;
 
 			int actualX = x - Vx[IX(i, j)]; 
 			int actualY = y - Vy[IX(i, j)];
@@ -438,14 +443,16 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 
 			glBegin(GL_LINES);
 
-			glColor3f(colorRange[finalCv]->r, colorRange[finalCv]->g, colorRange[finalCv]->b);
+			//glColor4f(colorRange[finalCv]->r, colorRange[finalCv]->g, colorRange[finalCv]->b, sourceAlpha); // Whats going on here? 
 			glVertex2f(x*CELL_SIZE_X, y*CELL_SIZE_Y);
 			glColor3f(0.0f, 0.0f, 0.0f);
 			glVertex2f((x * CELL_SIZE_X + (Vx[IX(i, j)] * velocityMultiplier)) , (y * CELL_SIZE_Y + (Vy[IX(i, j)] * velocityMultiplier)) );
 		}
 	}
 	glEnd();
-	cout << highestVelocity << endl;
+	std::cout << "Highest Velocity: " << highestVelocity << endl;
+	std::cout << "Final Color Value: " << finalCv << endl;
+	//cin.get();
 }
 
 void drawFluidDensity(FluidCube* fluidCube) {
@@ -583,7 +590,6 @@ int main()
 	initColors();
 	
 	SDL_Init(SDL_INIT_VIDEO);
-	//TTF_Init();
 
 	// Request an OpenGL 3.0 context.
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -599,8 +605,9 @@ int main()
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	glEnable(GL_BLEND);
 
-	//Create Fluid Cube 
-	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.00001f, 0.1f, 0.1f);
+	/*FluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time)*/
+	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
+
 
 	float totalFluid = 5000;
 	float currentFluid = totalFluid;
@@ -621,18 +628,22 @@ int main()
 		{
 			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					FluidCubeAddVelocity(fluidCube, 5, j, 0, 0);
-					fluidCubeAddDensity(fluidCube, 5, 25, 10000);
-					fluidCubeAddDensity(fluidCube, 5, 50, 10000);
-					fluidCubeAddDensity(fluidCube, 5, 75, 10000);
+					FluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
+					fluidCubeAddDensity(fluidCube, 5, j, 10000);
+					fluidCubeAddDensity(fluidCube, 5, j, 10000);
+					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 				}
-				currentFluid -= 25;
+				currentFluid -= 50;
 			}
 			else {
-					FluidCubeAddVelocity(fluidCube, 5, 25, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 50, 100, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 75, 100, 0);
+				/*
+					FluidCubeAddVelocity(fluidCube, 5, 25, 10, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 50, 10, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 75, 10, 0);
 					fluidCubeAddDensity(fluidCube, 0, 0, 0);
+				*/
+					
 					currentFluid += 0.1;
 			
 			}
@@ -675,12 +686,12 @@ int main()
 
 			//If the left mouse button is pressed then velocity direction goes left
 			if (sdlEvent.button.button == SDL_BUTTON_LEFT) {
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -1000.0f, 0);
+				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
 			}
 			
 			//If the right mouse button is pressed then velocity direction goes right
 			if(sdlEvent.button.button == SDL_BUTTON_RIGHT){
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000.0f, 0);
+				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
 
 			}
 
