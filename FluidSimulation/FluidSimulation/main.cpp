@@ -24,6 +24,8 @@ using namespace std;
 
 //Global Variables
 
+string lineBreak = "-----------------------------------------"; 
+
 struct color {
 	float r, g, b;
 };
@@ -53,10 +55,10 @@ enum CellState
 struct FluidCube {
 	int size;
 	float dt; //Delta Time (Step-Time)
-	float diff; //Diffussion Amount
-	float visc; // Viscosity, thickness of the fluid
+	float diffussion; //Diffussion Amount
+	float viscosity; // Viscosity, thickness of the fluid
 
-	float *s; // Source, set dye?
+	float *source; 
 	float *density;
 
 	//Velocity current
@@ -82,16 +84,18 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 	int N = size;
 
 	fluidCube->size = size;
-	fluidCube->dt = dt;
-	fluidCube->diff = diffusion;
-	fluidCube->visc = viscosity;
+	fluidCube->dt = dt; //Delta Time (Step-Time)
+	fluidCube->diffussion = diffusion; //Diffussion Amount
+	fluidCube->viscosity = viscosity; // Viscosity, thickness of the fluid
 
-	fluidCube->s = new float[(N + 2) * (N + 2)]();
+	fluidCube->source = new float[(N + 2) * (N + 2)](); 
 	fluidCube->density = new float[(N + 2) * (N + 2)]();
 
+	//Velocity current
 	fluidCube->Vx = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy = new float[(N + 2) * (N + 2)]();
 
+	//Velocity previous
 	fluidCube->Vx0 = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
@@ -103,15 +107,17 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 }
 
 
-// Add Density (Dye)
+/* --------------- fluidCube Adding --------------- */
+
+// Add Density
 void fluidCubeAddDensity(FluidCube *fluidCube, int x, int y, float amount) {
 	int N = fluidCube->size;
-	fluidCube->s[IX(x, y)] += amount;
+	fluidCube->source[IX(x, y)] += amount;
 	//cout << "Density amount at point: " << (float)fluidCube->s[IX(x, y)] << endl;
 }
 
 //Add Velocity
-void FluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, float amountY) {
+void fluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, float amountY) {
 	int N = fluidCube->size;
 	int index = IX(x, y);
 
@@ -120,16 +126,14 @@ void FluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, flo
 
 }
 
-//b= It tells the function which array it's dealing with, and so whether each boundary cell 
-//should be set equal or opposite its neighbor's value.
-
 /*
 NOTE TO SELF
 i = x
 j = y
 k = z
 
-b = ?
+b= It tells the function which array it's dealing with, and so whether each boundary cell 
+   should be set equal or opposite its neighbor's value.
 x = float based on velocity reference so it can be changed
 N = size of grid
 */
@@ -361,16 +365,43 @@ void getForces(int N, float * s, float * Vx0, float * Vy0) //reset Force to 0
 	}
 }
 
-void FluidCubeTimeStep(FluidCube *fluidCube) {
+/*
+N = size
+s* = source
+Vx = velocity for x
+Vy = Velocity for y
+Vx0 = previous velocity for x
+Vy0 = previous velocity for y
+
+
+*/
+
+void clearData(int N, float *s, float *Vx, float *Vy, float *Vx0, float *Vy0, float *density) //reset Force to 0
+{
+	int i, size = (N + 2) * (N + 2);
+	for (i = 0; i < size; i++)
+	{
+		s[i] = 0.0;
+		Vx[i] = 0.0;
+		Vy[i] = 0.0;
+		Vx0[i] = 0.0;
+		Vy0[i] = 0.0;
+		density[i] = 0.0;
+	}
+}
+
+/* ------------- fluidCube Time Step ------------- */
+
+void fluidCubeTimeStep(FluidCube *fluidCube) {
 	int N = fluidCube->size;
-	float visc = fluidCube->visc;
-	float diff = fluidCube->diff;
+	float visc = fluidCube->viscosity;
+	float diff = fluidCube->diffussion;
 	float dt = fluidCube->dt;
 	float *Vx = fluidCube->Vx;
 	float *Vy = fluidCube->Vy;
 	float *Vx0 = fluidCube->Vx0;
 	float *Vy0 = fluidCube->Vy0;
-	float *s = fluidCube->s; // density of previous step
+	float *s = fluidCube->source; // density of previous step
 	float *density = fluidCube->density; // density of current step
 	Particle* particles = fluidCube->particles;
 	CellState *cellStates = fluidCube->cellStates;
@@ -397,6 +428,23 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	//TO:DO - Add rigid body step here.
 
 	getForces(N, s, Vx0, Vy0); //Do all of above and then reset velocity and density to 0 for x and y
+}
+
+/* ------------- Clear 'fluidCube' Data Time Step ------------- */
+
+void clearFluidCubeTimeStep(FluidCube *fluidCube) {
+	int N = fluidCube->size;
+	float visc = fluidCube->viscosity;
+	float diff = fluidCube->diffussion;
+	float dt = fluidCube->dt;
+	float *Vx = fluidCube->Vx;
+	float *Vy = fluidCube->Vy;
+	float *Vx0 = fluidCube->Vx0;
+	float *Vy0 = fluidCube->Vy0;
+	float *s = fluidCube->source; // density of previous step
+	float *density = fluidCube->density; // density of current step
+
+	clearData(N, s, Vx, Vy, Vx0, Vy0, density);
 }
 
 void drawFluidVelocity(FluidCube* fluidCube) {
@@ -572,6 +620,21 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	//cout << "Highest Density Value: " << highestDensity << endl;
 }
 
+void initDisplayHelp() {
+	cout << lineBreak << endl << endl;
+	cout << "List of helpful commands: " << endl;
+	cout << lineBreak << endl << endl;
+	cout << "'H' to print helpful commands" << endl;
+	cout << "'Left Ctrl' to add 100,000 density at mouse position." << endl;
+	cout << "'Left Shift' to add 1,000,000 density at mouse position." << endl;
+	cout << "'Left Mouse' to add (-100, 0) velocity at the mouse position" << endl;
+	cout << "'Right Mouse' to add (100, 0) velocity at the mouse position" << endl;
+	cout << "'Space' to clear simulation" << endl;
+	cout << "'Esc' to quit simulation" << endl << endl;
+	cout << lineBreak << endl << endl;
+}
+
+
 //Window settings
 const int SCREEN_WIDTH = DISPLAY_SIZE_X;
 const int SCREEN_HEIGHT = DISPLAY_SIZE_Y;
@@ -617,7 +680,7 @@ void initColors() {
 int main()
 {
 	initColors(); //Initiate Color Spectra
-	
+	initDisplayHelp(); // INitiate helpful commands.
 	SDL_Init(SDL_INIT_VIDEO);
 
 	// Request an OpenGL 3.0 context.
@@ -634,14 +697,15 @@ int main()
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	glEnable(GL_BLEND);
 
-	/* FluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time */
-	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
-
+	/* fluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time */
+	FluidCube *fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
 
 	float totalFluid = 5000;
 	float currentFluid = totalFluid;
 	bool running = true; // set running to true
-
+	bool dataCleared = true;
+	bool densityAdded = false;
+	bool velocityAdded = false;
 	
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -657,10 +721,10 @@ int main()
 		{
 			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					FluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
@@ -691,37 +755,69 @@ int main()
 		int mouseGridPosiY = round((float)adjustedMousePosiY / CELL_SIZE_Y);
 
 		//If mouse button is pressed
-		if (sdlEvent.type == SDL_MOUSEBUTTONDOWN || SDL_KEYDOWN) {
+		if (sdlEvent.type == SDL_MOUSEBUTTONDOWN || SDL_KEYDOWN && sdlEvent.key.repeat == 0) {
 
 			//-----------------KEYBOARD CONTROLS
 
-			//If Left Ctrl then add density to area
+			//If 'Left Ctrl' then add density to area (10,000)
 			if (sdlEvent.button.button == SDL_SCANCODE_LCTRL) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 10000);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100000);
+				sdlEvent.key.repeat = 1;
+				cout << "Density amount added: 100,000" << endl;
+				sdlEvent.key.repeat = 1;
+				cout << lineBreak << endl << endl;
 			}
 
-			//If Left Shift then deduct density from area (seen as black fluid on display
-			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100000);
+			//If 'Left Shift' then add density to area (100,000) 
+			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT && SDL_KEYDOWN) {
+				densityAdded = true;
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000000);
+				cout << "Density Added Status: True" << endl;
+				sdlEvent.key.repeat = 1;
+				cout << "Density amount added: 1,000,000" << endl;
+				densityAdded = false;
+				cout << "Density Added Status: False" << endl;
+				cout << lineBreak << endl << endl;
+			}
+
+			//If 'Space' then clear data from simulation
+			if (sdlEvent.button.button == SDL_SCANCODE_SPACE) {
+				dataCleared = false;
+				cout << "DataClear Status: False" << endl;
+				clearFluidCubeTimeStep(fluidCube);
+				dataCleared = true;
+				cout << "DataClear Status: True" << endl;
+				sdlEvent.key.repeat = 1; 
+				cout << lineBreak << endl << endl;
+			}
+
+			//If 'H' cout helpful commands on control panel
+			if (sdlEvent.button.button == SDL_SCANCODE_H) {
+				initDisplayHelp();
+				sdlEvent.key.repeat = 1;
 			}
 
 			//-----------------MOUSE CONTROLS
 
-			//If the left mouse button is pressed then velocity direction goes left
+			//If the 'left mouse button' is pressed then velocity direction goes left
 			if (sdlEvent.button.button == SDL_BUTTON_LEFT) {
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
+				fluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
 			}
 			
-			//If the right mouse button is pressed then velocity direction goes right
+			//If the 'right mouse button' is pressed then velocity direction goes right
 			if(sdlEvent.button.button == SDL_BUTTON_RIGHT){
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
+				fluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
 
 			}
 
 		}
 
+
 		//TODO: Some timestep stuff
-		FluidCubeTimeStep(fluidCube);
+		if (dataCleared = true) {
+			fluidCubeTimeStep(fluidCube);
+		}
+		
 
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
