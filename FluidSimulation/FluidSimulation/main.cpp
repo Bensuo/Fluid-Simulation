@@ -404,15 +404,15 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 	float *Vx = fluidCube->Vx;
 	float *Vy = fluidCube->Vy;
 	//std::cout << "Vx: " << *Vx << endl;
-	//std::cout << "Vy: " << *Vy << endl;
+	std::cout << "Vy: " << *Vy << endl;
 	float cellSize = CELL_SIZE;
 	float sourceAlpha = 0.05;
 
 	glLineWidth(5.0f);
 
 	int velocityMultiplier = 30;
-	float highestVelocity;
-	int finalCv;
+	float highestVelocity = 0.0;
+	int finalCv = 0;
 	
 	
 	for (i = 1; i <= N; i++) {
@@ -432,8 +432,11 @@ void drawFluidVelocity(FluidCube* fluidCube) {
 
 			/*Final Color Value*/
 			int finalCv = round(iniCv/500 * (MAX_COLOR - 1)); 
-			if (finalCv > MAX_COLOR - 1)
+
+			if (finalCv > MAX_COLOR - 1) {
 				finalCv = MAX_COLOR - 1;
+			}
+				
 
 			int actualX = x - Vx[IX(i, j)]; 
 			int actualY = y - Vy[IX(i, j)];
@@ -630,6 +633,8 @@ int main()
 				for (int j = 1; j <= GRID_SIZE; j++) {
 					FluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
 					FluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
+					FluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
@@ -679,7 +684,7 @@ int main()
 
 			//If Left Shift then deduct density from area (seen as black fluid on display
 			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, -10000);
 			}
 
 			//-----------------MOUSE CONTROLS
