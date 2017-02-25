@@ -208,7 +208,7 @@ x = float based on velocity reference so it can be changed
 N = size of grid
 */
 
-static void set_bnd(int b, float *x, int N) {
+static void set_bnd(int b, float *x, int N, int type) {
 
 	int i;
 	for (i = 1; i <= N; i++) {
@@ -232,6 +232,7 @@ static void set_bnd(int b, float *x, int N) {
 	x[IX(N + 1, 0)] = 0.5*(x[IX(N, 0)] + x[IX(N + 1, 1)]);
 	x[IX(N + 1, N + 1)] = 0.5*(x[IX(N, N + 1)] + x[IX(N + 1, N)]);
 
+	if (type == 2) {
 		/*Add Obstacle Boundaries*/
 		//ListNode head (list ) = obstacle.list
 		ObstacleList* current = obstacles.list;
@@ -239,12 +240,12 @@ static void set_bnd(int b, float *x, int N) {
 		while (current != nullptr) {
 
 			/*X Axis*/
-			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x +1, current->obstacle.y)] : x[IX(current->obstacle.x + 1, current->obstacle.y)];
-			x[IX(current->obstacle.x + 1, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x + 1, current->obstacle.y)] : x[IX(current->obstacle.x + 1, current->obstacle.y)];
+			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x + 1, current->obstacle.y)] : x[IX(current->obstacle.x + 1, current->obstacle.y)];
+			x[IX(current->obstacle.x + 1, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x, current->obstacle.y)] : x[IX(current->obstacle.x, current->obstacle.y)];
 
 			/*Y Axis*/
 			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y + 1)] : x[IX(current->obstacle.x, current->obstacle.y + 1)];
-			x[IX(current->obstacle.x, current->obstacle.y + 1)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y + 1)] : x[IX(current->obstacle.x, current->obstacle.y + 1)];
+			x[IX(current->obstacle.x, current->obstacle.y + 1)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y )] : x[IX(current->obstacle.x, current->obstacle.y)];
 
 			/*X Axis*/
 			x[IX(current->obstacle.x, current->obstacle.y)] = 0;
@@ -254,6 +255,7 @@ static void set_bnd(int b, float *x, int N) {
 			x[IX(current->obstacle.x, current->obstacle.y)] = 0;
 			x[IX(current->obstacle.x, current->obstacle.y + 1)] = 0;
 			current = current->next;
+		}
 	}
 }
 
@@ -275,7 +277,6 @@ void addObstacle(int x, int y) {
 	//Fourth Obstacles Cell
 	Obstacle O4 = Obstacle(x + 1, y + 1, 2);
 	obstacles.add(O4);
-
 }
 
 /*
@@ -303,7 +304,7 @@ void diffuse(int N, int b, float *x, float *x0, float diff, float dt) {
 				x[IX(i, j)] = (x0[IX(i, j)] + a*(x[IX(i - 1, j)] + x[IX(i + 1, j)] + +x[IX(i, j - 1)] + +x[IX(i, j + 1)])) / (1 + 4 * a);
 			}
 		}
-		set_bnd(b, x, N);
+		set_bnd(b, x, N, 2);
 	}
 }
 
@@ -382,7 +383,7 @@ void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 			d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) + s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
 		}
 	}
-	set_bnd(b, d, N); // ensures advection is not going outside of the boundry, if not fix it.
+	set_bnd(b, d, N, 2); // ensures advection is not going outside of the boundry, if not fix it.
 }
 
 
@@ -421,8 +422,8 @@ void project(int N, float *u, float *v, float *p, float *div) {
 		}
 	}
 
-	set_bnd(0, div, N);
-	set_bnd(0, p, N);
+	set_bnd(0, div, N, 2);
+	set_bnd(0, p, N, 2);
 
 	// why 20? = becase the value P changes as we progress through the computation
 	for (int k = 0; k < 20; k++)
@@ -437,7 +438,7 @@ void project(int N, float *u, float *v, float *p, float *div) {
 				p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) / 4;
 			}
 		}
-		set_bnd(0, p, N);
+		set_bnd(0, p, N, 2);
 	}
 
 	for (int i = 1; i <= N; i++)
@@ -448,8 +449,8 @@ void project(int N, float *u, float *v, float *p, float *div) {
 			v[IX(i, j)] -= 0.5 * (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / h;
 		}
 	}
-	set_bnd(1, u, N);
-	set_bnd(2, v, N);
+	set_bnd(1, u, N, 2);
+	set_bnd(2, v, N, 2);
 }
 
 //add_source(N, Vx, Vx0, dt);
@@ -523,7 +524,6 @@ void fluidCubeTimeStep(FluidCube *fluidCube) {
 	float *density = fluidCube->density; // density of current step
 	Particle* particles = fluidCube->particles;
 	CellState *cellStates = fluidCube->cellStates;
-
 
 	//Velocity step
 	add_source(N, Vx, Vx0, dt); //compute velocity for X
@@ -744,9 +744,9 @@ void initDisplayHelp() {
 	cout << "List of helpful commands: " << endl;
 	cout << lineBreak << endl << endl;
 	cout << "'H' to print helpful commands" << endl;
-	cout << "'W' to add obstacles at mouse position" << endl;
-	cout << "'Left Ctrl' to add 100,000 density at mouse position." << endl;
-	cout << "'Left Shift' to add 1,000,000 density at mouse position." << endl;
+	cout << "'W' to add one obstacles at mouse position" << endl;
+	cout << "'Left Ctrl' to add 1,000,000 density at mouse position." << endl;
+	cout << "'Left Shift' to add 10,000,000 density at mouse position." << endl;
 	cout << "'Left Mouse' to add (-100, 0) velocity at the mouse position" << endl;
 	cout << "'Right Mouse' to add (100, 0) velocity at the mouse position" << endl;
 	cout << "'Space' to clear simulation" << endl;
@@ -879,24 +879,24 @@ int main()
 
 			//-----------------KEYBOARD CONTROLS
 
-			//If 'Left Ctrl' then add density to area (100,000)
+			//If 'Left Ctrl' then add density to area (1,000,000)
 			if (sdlEvent.button.button == SDL_SCANCODE_LCTRL) {
 				densityAdded = true;
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100000);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000000);
 				sdlEvent.key.repeat = 1;
-				cout << "Density amount added: 100,000" << endl;
+				cout << "Density amount added: 1,00,000" << endl;
 				sdlEvent.key.repeat = 1;
 				densityAdded = false;
 				cout << lineBreak << endl << endl;
 			}
 
-			//If 'Left Shift' then add density to area (1,000,000) 
+			//If 'Left Shift' then add density to area (10,000,000) 
 			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT && SDL_KEYDOWN) {
 				densityAdded = false;
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000000);
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 10000000);
 				cout << "Density Added Status: True" << endl;
 				sdlEvent.key.repeat = 1;
-				cout << "Density amount added: 1,000,000" << endl;
+				cout << "Density amount added: 10,000,000" << endl;
 				densityAdded = true;
 				cout << "Density Added Status: False" << endl;
 				cout << lineBreak << endl << endl;
