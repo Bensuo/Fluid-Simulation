@@ -543,11 +543,6 @@ void fluidCubeTimeStep(FluidCube *fluidCube) {
 	diffuse(N, 0, s, density, diff, dt); //computes diffusion for next step in grid
 	advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step. 
 
-	//TO:DO - Add rigid body step here.
-
-	//TO:DO - Add Obstacle body step here.
-
-
 	getForces(N, s, Vx0, Vy0); //Do all of above and then reset velocity and density to 0 for x and y
 }
 
