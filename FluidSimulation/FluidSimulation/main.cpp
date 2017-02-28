@@ -7,6 +7,7 @@
 #include <string>
 #include <sstream>
 #include <iomanip>
+#include <vector>
 using namespace std;
 
 #define IX(x,y) ((x)+(N+2)*(y)) 
@@ -23,6 +24,13 @@ using namespace std;
 #define MAX_COLOR 1024
 
 //Global Variables
+
+//Set aspect ratio (world cords)
+const static float ASPECT_RATIO = ((float)DISPLAY_SIZE_X / (float)DISPLAY_SIZE_Y);
+const static float CELL_SIZE_X = (float)((1.0f / ((float)GRID_SIZE / (float)DISPLAY_SIZE_X))); //size of cells in grid
+const static float CELL_SIZE_Y = (float)((1.0f / ((float)GRID_SIZE / (float)DISPLAY_SIZE_Y))); //size of cells in grid
+
+string lineBreak = "-----------------------------------------"; 
 
 struct color {
 	float r, g, b;
@@ -53,10 +61,10 @@ enum CellState
 struct FluidCube {
 	int size;
 	float dt; //Delta Time (Step-Time)
-	float diff; //Diffussion Amount
-	float visc; // Viscosity, thickness of the fluid
+	float diffussion; //Diffussion Amount
+	float viscosity; // Viscosity, thickness of the fluid
 
-	float *s; // Source, set dye?
+	float *source; 
 	float *density;
 
 	//Velocity current
@@ -72,26 +80,91 @@ struct FluidCube {
 };
 typedef struct FluidCube FluidCube;
 
-//Set aspect ratio (world cords)
-const static float ASPECT_RATIO = ((float)DISPLAY_SIZE_X / (float)DISPLAY_SIZE_Y);
-const static float CELL_SIZE_X = (float)((1.0f / ((float)GRID_SIZE / (float)DISPLAY_SIZE_X))); //size of cells in grid
-const static float CELL_SIZE_Y = (float)((1.0f / ((float)GRID_SIZE / (float)DISPLAY_SIZE_Y))); //size of cells in grid
+struct Obstacle {
+	Obstacle() { //Default constructor
+
+	}
+
+	Obstacle(int x, int y, int b) {
+		this->x = x;
+		this->y = y;
+		this->b = b;
+	}
+	int x;
+	int y;
+	int b; // Orientation of where velocity/density is coming from
+};
+
+struct ObstacleList {
+	Obstacle obstacle;
+	ObstacleList *next;
+};
+
+struct ObstacleBlock {
+	ObstacleBlock() {
+		list = nullptr;
+	}
+
+	void add(Obstacle obstacle) {
+		ObstacleList *newObstacle = new ObstacleList; 
+		newObstacle->obstacle = obstacle; //new linked list object
+		newObstacle->next = nullptr;  //object.next = nullptr
+		if (list == nullptr) { //list(node) == NULL
+			list = newObstacle; //list = node object (reference to head)
+			end = newObstacle;  //end = node object (reference to head)
+			
+		}
+		else {
+			end->next = newObstacle; // end node next reference = new node 
+			end = end->next; // end node reference = next new node. 
+		}
+	}
+	
+
+	void drawObstacle() {
+		ObstacleList* current = list;
+		glColor3f(1.0, 1.0, 1.0); // <- White
+		while (current != nullptr) {
+			float pixelX = current->obstacle.x * CELL_SIZE_X;
+			float pixelY = current->obstacle.y * CELL_SIZE_Y;
+
+			glBegin(GL_QUADS);
+			glVertex2f(pixelX, pixelY);
+			glVertex2f(pixelX + CELL_SIZE_X, pixelY);
+			glVertex2f(pixelX + CELL_SIZE_X, pixelY + CELL_SIZE_Y);
+			glVertex2f(pixelX, pixelY + CELL_SIZE_Y);
+			glEnd();
+			
+			current = current->next;
+
+			
+		}
+	}
+
+	ObstacleList* list; 
+	ObstacleList* end;
+};
+ObstacleBlock obstacles = ObstacleBlock();
+
+
 
 FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt) {
 	FluidCube *fluidCube = new FluidCube;
 	int N = size;
 
 	fluidCube->size = size;
-	fluidCube->dt = dt;
-	fluidCube->diff = diffusion;
-	fluidCube->visc = viscosity;
+	fluidCube->dt = dt; //Delta Time (Step-Time)
+	fluidCube->diffussion = diffusion; //Diffussion Amount
+	fluidCube->viscosity = viscosity; // Viscosity, thickness of the fluid
 
-	fluidCube->s = new float[(N + 2) * (N + 2)]();
+	fluidCube->source = new float[(N + 2) * (N + 2)](); 
 	fluidCube->density = new float[(N + 2) * (N + 2)]();
 
+	//Velocity current
 	fluidCube->Vx = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy = new float[(N + 2) * (N + 2)]();
 
+	//Velocity previous
 	fluidCube->Vx0 = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
@@ -103,15 +176,17 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 }
 
 
-// Add Density (Dye)
+/* --------------- fluidCube Adding --------------- */
+
+// Add Density
 void fluidCubeAddDensity(FluidCube *fluidCube, int x, int y, float amount) {
 	int N = fluidCube->size;
-	fluidCube->s[IX(x, y)] += amount;
+	fluidCube->source[IX(x, y)] += amount;
 	//cout << "Density amount at point: " << (float)fluidCube->s[IX(x, y)] << endl;
 }
 
 //Add Velocity
-void FluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, float amountY) {
+void fluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, float amountY) {
 	int N = fluidCube->size;
 	int index = IX(x, y);
 
@@ -120,8 +195,6 @@ void FluidCubeAddVelocity(FluidCube *fluidCube, int x, int y, float amountX, flo
 
 }
 
-//b= It tells the function which array it's dealing with, and so whether each boundary cell 
-//should be set equal or opposite its neighbor's value.
 
 /*
 NOTE TO SELF
@@ -129,27 +202,28 @@ i = x
 j = y
 k = z
 
-b = ?
+b= It tells the function which array it's dealing with, and so whether each boundary cell 
+   should be set equal or opposite its neighbor's value.
 x = float based on velocity reference so it can be changed
 N = size of grid
 */
 
-static void set_bnd(int b, float *x, int N) {
-
+static void set_bnd(int b, float *x, int N, int type) {
 
 	int i;
 	for (i = 1; i <= N; i++) {
 		// set points for the 4 edges of the boundry based on the size of grid for next step based on current step
 		// bounces velocity by inversing if boundry hits the boundry
-		x[IX(0, i)] = b == 1 ? -x[IX(1, i)] : x[IX(1, i)];
-		x[IX(N + 1, i)] = b == 1 ? -x[IX(N, i)] : x[IX(N, i)];
+
+		/*X Axis*/
+		x[IX(0, i)] = b == 1 ? -x[IX(1, i)] : x[IX(1, i)]; 
+		x[IX(N + 1, i)] = b == 1 ? -x[IX(N, i)] : x[IX(N, i)]; 
+
+		/*Y Axis*/
 		x[IX(i, 0)] = b == 2 ? -x[IX(i, 1)] : x[IX(i, 1)];
 		x[IX(i, N + 1)] = b == 2 ? -x[IX(i, N)] : x[IX(i, N)];
 	}
 	/*
-	set_bnd(0, div, N);
-	set_bnd(0, p, N);
-
 	set points for the 4 corners of the boundry based on size of grid for the current step
 	*/
 
@@ -157,8 +231,53 @@ static void set_bnd(int b, float *x, int N) {
 	x[IX(0, N + 1)] = 0.5*(x[IX(1, N + 1)] + x[IX(0, N)]);
 	x[IX(N + 1, 0)] = 0.5*(x[IX(N, 0)] + x[IX(N + 1, 1)]);
 	x[IX(N + 1, N + 1)] = 0.5*(x[IX(N, N + 1)] + x[IX(N + 1, N)]);
+
+	if (type == 2) {
+		/*Add Obstacle Boundaries*/
+		//ListNode head (list ) = obstacle.list
+		ObstacleList* current = obstacles.list;
+
+		while (current != nullptr) {
+
+			/*X Axis*/
+			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x + 1, current->obstacle.y)] : x[IX(current->obstacle.x + 1, current->obstacle.y)];
+			x[IX(current->obstacle.x + 1, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x, current->obstacle.y)] : x[IX(current->obstacle.x, current->obstacle.y)];
+
+			/*Y Axis*/
+			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y + 1)] : x[IX(current->obstacle.x, current->obstacle.y + 1)];
+			x[IX(current->obstacle.x, current->obstacle.y + 1)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y )] : x[IX(current->obstacle.x, current->obstacle.y)];
+
+			/*X Axis*/
+			x[IX(current->obstacle.x, current->obstacle.y)] = 0;
+			x[IX(current->obstacle.x + 1, current->obstacle.y)] = 0;
+
+			/*Y Axis*/
+			x[IX(current->obstacle.x, current->obstacle.y)] = 0;
+			x[IX(current->obstacle.x, current->obstacle.y + 1)] = 0;
+			current = current->next;
+		}
+	}
 }
 
+void addObstacle(int x, int y) {
+	/*Must have at least 4x Obstacle Block for this simulation*/
+
+	//First Obstacle Cell
+	Obstacle O = Obstacle(x, y, 1);
+	obstacles.add(O);
+
+	//Second Obstacles Cell
+	Obstacle O2 = Obstacle(x + 1, y, 1);
+	obstacles.add(O2);
+
+	//Third Obstacle Cell
+	Obstacle O3 = Obstacle(x, y + 1, 2);
+	obstacles.add(O3);
+
+	//Fourth Obstacles Cell
+	Obstacle O4 = Obstacle(x + 1, y + 1, 2);
+	obstacles.add(O4);
+}
 
 /*
 Function finds previous velocity
@@ -185,9 +304,12 @@ void diffuse(int N, int b, float *x, float *x0, float diff, float dt) {
 				x[IX(i, j)] = (x0[IX(i, j)] + a*(x[IX(i - 1, j)] + x[IX(i + 1, j)] + +x[IX(i, j - 1)] + +x[IX(i, j + 1)])) / (1 + 4 * a);
 			}
 		}
-		set_bnd(b, x, N);
+		set_bnd(b, x, N, 2);
 	}
 }
+
+
+
 
 /*	
 Linearly interpolate from the grid of previous density values
@@ -210,8 +332,6 @@ especially horizontally in the atmosphere or the sea.
 advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step.
 
 */
-
-
 void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 	int i, j, i0, j0, i1, j1;
 	float x, y, s0, t0, s1, t1, dt0;
@@ -220,7 +340,9 @@ void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 
 	for (i = 1; i <= N; i++) {
 		for (j = 1; j <= N; j++) {
-			x = i - dt0*u[IX(i, j)]; y = j - dt0*v[IX(i, j)];
+			x = i - dt0*u[IX(i, j)]; 
+			y = j - dt0*v[IX(i, j)];
+
 			if (x < 0.5) { 
 				x = 0.5;
 			}
@@ -261,7 +383,7 @@ void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 			d[IX(i, j)] = s0 * (t0 * d0[IX(i0, j0)] + t1 * d0[IX(i0, j1)]) + s1 * (t0 * d0[IX(i1, j0)] + t1 * d0[IX(i1, j1)]);
 		}
 	}
-	set_bnd(b, d, N); // ensures advection is not going outside of the boundry, if not fix it.
+	set_bnd(b, d, N, 2); // ensures advection is not going outside of the boundry, if not fix it.
 }
 
 
@@ -300,8 +422,8 @@ void project(int N, float *u, float *v, float *p, float *div) {
 		}
 	}
 
-	set_bnd(0, div, N);
-	set_bnd(0, p, N);
+	set_bnd(0, div, N, 2);
+	set_bnd(0, p, N, 2);
 
 	// why 20? = becase the value P changes as we progress through the computation
 	for (int k = 0; k < 20; k++)
@@ -316,7 +438,7 @@ void project(int N, float *u, float *v, float *p, float *div) {
 				p[IX(i, j)] = (div[IX(i, j)] + p[IX(i - 1, j)] + p[IX(i + 1, j)] + p[IX(i, j - 1)] + p[IX(i, j + 1)]) / 4;
 			}
 		}
-		set_bnd(0, p, N);
+		set_bnd(0, p, N, 2);
 	}
 
 	for (int i = 1; i <= N; i++)
@@ -327,8 +449,8 @@ void project(int N, float *u, float *v, float *p, float *div) {
 			v[IX(i, j)] -= 0.5 * (p[IX(i, j + 1)] - p[IX(i, j - 1)]) / h;
 		}
 	}
-	set_bnd(1, u, N);
-	set_bnd(2, v, N);
+	set_bnd(1, u, N, 2);
+	set_bnd(2, v, N, 2);
 }
 
 //add_source(N, Vx, Vx0, dt);
@@ -341,6 +463,7 @@ dt = time step
 add_source(N, density, s, dt); //compute density into grid
 
 */
+
 void add_source(int N, float * Vx, float * Vx0, float dt) {
 	int i, size = (N + 2) * (N + 2);
 	for (i = 0; i < size; i++)
@@ -361,20 +484,46 @@ void getForces(int N, float * s, float * Vx0, float * Vy0) //reset Force to 0
 	}
 }
 
-void FluidCubeTimeStep(FluidCube *fluidCube) {
+/*
+N = size
+s* = source
+Vx = velocity for x
+Vy = Velocity for y
+Vx0 = previous velocity for x
+Vy0 = previous velocity for y
+
+Clears the Simulation Data
+*/
+
+void clearData(int N, float *s, float *Vx, float *Vy, float *Vx0, float *Vy0, float *density) //reset Force to 0
+{
+	int i, size = (N + 2) * (N + 2);
+	for (i = 0; i < size; i++)
+	{
+		s[i] = 0.0;
+		Vx[i] = 0.0;
+		Vy[i] = 0.0;
+		Vx0[i] = 0.0;
+		Vy0[i] = 0.0;
+		density[i] = 0.0;
+	}
+}
+
+/* ------------- fluidCube Time Step ------------- */
+
+void fluidCubeTimeStep(FluidCube *fluidCube) {
 	int N = fluidCube->size;
-	float visc = fluidCube->visc;
-	float diff = fluidCube->diff;
+	float visc = fluidCube->viscosity;
+	float diff = fluidCube->diffussion;
 	float dt = fluidCube->dt;
 	float *Vx = fluidCube->Vx;
 	float *Vy = fluidCube->Vy;
 	float *Vx0 = fluidCube->Vx0;
 	float *Vy0 = fluidCube->Vy0;
-	float *s = fluidCube->s; // density of previous step
+	float *s = fluidCube->source; // density of previous step
 	float *density = fluidCube->density; // density of current step
 	Particle* particles = fluidCube->particles;
 	CellState *cellStates = fluidCube->cellStates;
-
 
 	//Velocity step
 	add_source(N, Vx, Vx0, dt); //compute velocity for X
@@ -394,9 +543,22 @@ void FluidCubeTimeStep(FluidCube *fluidCube) {
 	diffuse(N, 0, s, density, diff, dt); //computes diffusion for next step in grid
 	advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step. 
 
-	//TO:DO - Add rigid body step here.
-
 	getForces(N, s, Vx0, Vy0); //Do all of above and then reset velocity and density to 0 for x and y
+}
+
+/* ------------- Clear 'fluidCube' Data Time Step ------------- */
+
+void clearFluidCubeTimeStep(FluidCube *fluidCube) {
+	int N = fluidCube->size;
+	float diff = fluidCube->diffussion;
+	float *Vx = fluidCube->Vx;
+	float *Vy = fluidCube->Vy;
+	float *Vx0 = fluidCube->Vx0;
+	float *Vy0 = fluidCube->Vy0;
+	float *s = fluidCube->source; // density of previous step
+	float *density = fluidCube->density; // density of current step
+
+	clearData(N, s, Vx, Vy, Vx0, Vy0, density);
 }
 
 void drawFluidVelocity(FluidCube* fluidCube) {
@@ -572,6 +734,22 @@ void drawFluidDensity(FluidCube* fluidCube) {
 	//cout << "Highest Density Value: " << highestDensity << endl;
 }
 
+void initDisplayHelp() {
+	cout << lineBreak << endl << endl;
+	cout << "List of helpful commands: " << endl;
+	cout << lineBreak << endl << endl;
+	cout << "'H' to print helpful commands" << endl;
+	cout << "'W' to add one obstacles at mouse position" << endl;
+	cout << "'Left Ctrl' to add 1,000,000 density at mouse position." << endl;
+	cout << "'Left Shift' to add 10,000,000 density at mouse position." << endl;
+	cout << "'Left Mouse' to add (-100, 0) velocity at the mouse position" << endl;
+	cout << "'Right Mouse' to add (100, 0) velocity at the mouse position" << endl;
+	cout << "'Space' to clear simulation" << endl;
+	cout << "'Esc' to quit simulation" << endl << endl;
+	cout << lineBreak << endl << endl;
+}
+
+
 //Window settings
 const int SCREEN_WIDTH = DISPLAY_SIZE_X;
 const int SCREEN_HEIGHT = DISPLAY_SIZE_Y;
@@ -617,7 +795,7 @@ void initColors() {
 int main()
 {
 	initColors(); //Initiate Color Spectra
-	
+	initDisplayHelp(); // INitiate helpful commands.
 	SDL_Init(SDL_INIT_VIDEO);
 
 	// Request an OpenGL 3.0 context.
@@ -634,14 +812,15 @@ int main()
 	gRenderer = SDL_CreateRenderer(gWindow, -1, SDL_RENDERER_ACCELERATED);
 	glEnable(GL_BLEND);
 
-	/* FluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time */
-	FluidCube * fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
-
+	/* fluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time */
+	FluidCube *fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
 
 	float totalFluid = 5000;
 	float currentFluid = totalFluid;
 	bool running = true; // set running to true
-
+	bool dataCleared = true;
+	bool densityAdded = false;
+	bool velocityAdded = false;
 	
 
 	SDL_Event sdlEvent;  // variable to detect SDL events
@@ -657,10 +836,10 @@ int main()
 		{
 			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					FluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
-					FluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
+					fluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
 					fluidCubeAddDensity(fluidCube, 5, j, 10000);
@@ -691,37 +870,96 @@ int main()
 		int mouseGridPosiY = round((float)adjustedMousePosiY / CELL_SIZE_Y);
 
 		//If mouse button is pressed
-		if (sdlEvent.type == SDL_MOUSEBUTTONDOWN || SDL_KEYDOWN) {
+		if (sdlEvent.type == SDL_MOUSEBUTTONDOWN || SDL_KEYDOWN && sdlEvent.key.repeat == 0) {
 
 			//-----------------KEYBOARD CONTROLS
 
-			//If Left Ctrl then add density to area
+			//If 'Left Ctrl' then add density to area (1,000,000)
 			if (sdlEvent.button.button == SDL_SCANCODE_LCTRL) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 10000);
+				densityAdded = true;
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 1000000);
+				sdlEvent.key.repeat = 1;
+				cout << "Density amount added: 1,00,000" << endl;
+				sdlEvent.key.repeat = 1;
+				densityAdded = false;
+				cout << lineBreak << endl << endl;
 			}
 
-			//If Left Shift then deduct density from area (seen as black fluid on display
-			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT) {
-				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100000);
+			//If 'Left Shift' then add density to area (10,000,000) 
+			if (sdlEvent.button.button == SDL_SCANCODE_LSHIFT && SDL_KEYDOWN) {
+				densityAdded = false;
+				fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 10000000);
+				cout << "Density Added Status: True" << endl;
+				sdlEvent.key.repeat = 1;
+				cout << "Density amount added: 10,000,000" << endl;
+				densityAdded = true;
+				cout << "Density Added Status: False" << endl;
+				cout << lineBreak << endl << endl;
+			}
+
+			//If 'Space' then clear data from simulation
+			if (sdlEvent.button.button == SDL_SCANCODE_SPACE) {
+				dataCleared = false;
+				cout << "DataClear Status: False" << endl;
+				clearFluidCubeTimeStep(fluidCube);
+				dataCleared = true;
+				cout << "DataClear Status: True" << endl;
+				sdlEvent.key.repeat = 1; 
+				cout << "Simulation Data Cleared: SUCCESS" << endl;
+				cout << lineBreak << endl << endl;
+			}
+
+			//If 'H' cout helpful commands on control panel
+			if (sdlEvent.button.button == SDL_SCANCODE_H) {
+				initDisplayHelp();
+				sdlEvent.key.repeat = 1;
+			}
+
+			//If 'W' cout helpful commands on control panel
+			if (sdlEvent.button.button == SDL_SCANCODE_W) {
+				addObstacle(mouseGridPosiX, mouseGridPosiY);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 1);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 2);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 3);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 4);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 5);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 6);
+				addObstacle(mouseGridPosiX, mouseGridPosiY + 7);
+
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 1);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 2);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 3);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 4);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 5);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 6);
+				addObstacle(mouseGridPosiX + 1, mouseGridPosiY + 7);
+				sdlEvent.key.repeat = 1;
+				cout << "Successfully added obstacle: " << endl;
+				cout << lineBreak << endl << endl;
 			}
 
 			//-----------------MOUSE CONTROLS
 
-			//If the left mouse button is pressed then velocity direction goes left
+			//If the 'left mouse button' is pressed then velocity direction goes left
 			if (sdlEvent.button.button == SDL_BUTTON_LEFT) {
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
+				fluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
 			}
 			
-			//If the right mouse button is pressed then velocity direction goes right
+			//If the 'right mouse button' is pressed then velocity direction goes right
 			if(sdlEvent.button.button == SDL_BUTTON_RIGHT){
-				FluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
+				fluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
 
 			}
 
 		}
 
+
 		//TODO: Some timestep stuff
-		FluidCubeTimeStep(fluidCube);
+		if (dataCleared = true) {
+			fluidCubeTimeStep(fluidCube);
+		}
+		
 
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -733,6 +971,7 @@ int main()
 		glPointSize(10.0f);
 		glLineWidth(5.0f);
 
+		obstacles.drawObstacle();
 		drawFluidDensity(fluidCube);
 		drawFluidVelocity(fluidCube);
 
@@ -743,5 +982,14 @@ int main()
 	for (int i = 0; i < MAX_COLOR; i++) {
 		delete colorRange[i]; 
 	}
+
+	/*Delete Linked List*/
+	ObstacleList* current = obstacles.list;
+	while (current != nullptr) {
+		ObstacleList* temp = current;
+		current = current->next;
+		delete temp;
+	}
+
 	return 0;
 }
