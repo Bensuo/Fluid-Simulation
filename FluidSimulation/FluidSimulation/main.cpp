@@ -567,6 +567,7 @@ void clearData(int N, float *s, float *Vx, float *Vy, float *Vx0, float *Vy0, fl
 		Vy0[i] = 0.0;
 		density[i] = 0.0;
 	}
+	bodies.clear();
 }
 
 /* ------------- fluidCube Time Step ------------- */
@@ -993,7 +994,7 @@ int main()
 					break;
 					//Pause & Resume Simulation by pressing 'Return'
 				case SDLK_RETURN:
-					runSim = true;
+					runSim = !runSim;
 					break;
 
 				case SDLK_b:;
