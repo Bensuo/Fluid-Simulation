@@ -46,7 +46,81 @@ int mousePosiX;
 int mousePosiY;
 int mousePosiZ;
 
+struct Circle
+{
+	glm::vec2 c;
+	float r;
+	glm::vec2 v;
 
+	void draw()
+	{
+		//glPointSize(50);
+		//glBegin(GL_POINTS);
+		//glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+		//glVertex2f(c.x * GRID_SIZE * CELL_SIZE_X, c.y *GRID_SIZE * CELL_SIZE_Y);
+		const int NPOINTS = 24;
+		const float TWOPI = 2 * 3.14159268;
+		const float STEP = TWOPI / NPOINTS;
+		glBegin(GL_LINE_LOOP);
+		for (float angle = 0; angle < TWOPI; angle += STEP)
+		{
+			glVertex2f(c.x * GRID_SIZE * CELL_SIZE_X + r * GRID_SIZE * CELL_SIZE_X * cos(angle), c.y * GRID_SIZE * CELL_SIZE_Y + r * GRID_SIZE * CELL_SIZE_Y * sin(angle));
+		}
+		glEnd();
+	}
+};
+std::vector<Circle> bodies;
+
+void updateRigidBody(int N, float* Vx, float* Vy, Circle& circle, float dt)
+{
+	int x = circle.c.x*N;
+	int y = circle.c.y*N;
+	circle.v = glm::vec2(Vx[IX(x, y)], Vy[IX(x, y)]);
+	circle.c += circle.v * dt;
+}
+
+void checkBodyCollisions(int N)
+{
+	float h = 1.0f / N;
+	Circle c1, c2;
+	//Collisions between bodies
+	for (size_t i = 0; i < bodies.size(); i++)
+	{
+		c1 = bodies[i];
+		for (size_t j = i+1; j < bodies.size(); j++)
+		{
+
+			c2 = bodies[j];
+			float d = glm::length(c2.c - c1.c);
+			float r = c1.r + c2.r;
+			if (d < r)
+			{
+				glm::vec2 axis = c2.c - c1.c;
+				axis = glm::normalize(axis);
+				bodies[i].c += axis * ((d-r) * 0.5f);
+				bodies[j].c -= axis * ((d - r) * 0.5f);
+				d = glm::length(c2.c - c1.c);
+				d = d;
+			}
+		}
+		if (c1.c.x < h + c1.r) 
+		{ 
+			bodies[i].c.x = h + c1.r;
+		}
+		if (c1.c.x > 1 - h - c1.r) 
+		{
+			bodies[i].c.x = 1 - h - c1.r;
+		}
+		if (c1.c.y < h + c1.r) 
+		{
+			bodies[i].c.y = h + c1.r;
+		}
+		if (c1.c.y > 1 - h - c1.r)
+		{ 
+			bodies[i].c.y = 1 - h - c1.r;
+		}
+	}
+}
 
 struct FluidCube {
 	int size;
@@ -527,6 +601,11 @@ void fluidCubeTimeStep(FluidCube *fluidCube) {
 	diffuse(N, 0, s, density, diff, dt); //computes diffusion for next step in grid
 	advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step. 
 
+	for (size_t i = 0; i < bodies.size(); i++)
+	{
+		updateRigidBody(N, Vx, Vy, bodies[i], dt);
+	}
+	checkBodyCollisions(N);
 	getForces(N, s, Vx0, Vy0); //Do all of above and then reset velocity and density to 0 for x and y
 }
 
@@ -780,6 +859,16 @@ void initColors() {
 	}
 }
 
+void drawBodies()
+{
+	glColor3f(1.0f, 1.0f, 1.0f);
+	glLineWidth(2);
+	for (size_t i = 0; i < bodies.size(); i++)
+	{
+		bodies[i].draw();
+	}
+}
+
 int main()
 {
 	initColors(); //Initiate Color Spectra
@@ -907,6 +996,10 @@ int main()
 					runSim = true;
 					break;
 
+				case SDLK_b:;
+					bodies.push_back(Circle{ glm::vec2((float)mouseGridPosiX / GRID_SIZE, (float)mouseGridPosiY / GRID_SIZE), 0.01f, glm::vec2(0) });
+					break;
+
 					//Exit Simulation by pressing Esc
 				case SDLK_ESCAPE:
 					running = false;
@@ -956,6 +1049,7 @@ int main()
 		obstacles.drawObstacle();
 		drawFluidDensity(fluidCube);
 		drawFluidVelocity(fluidCube);
+		drawBodies();
 
 		SDL_GL_SwapWindow(gWindow); // Swap buffers
 	}
