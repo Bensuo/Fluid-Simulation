@@ -46,19 +46,7 @@ int mousePosiX;
 int mousePosiY;
 int mousePosiZ;
 
-struct Particle
-{
-	float x = 0;
-	float y = 0;
-	bool isActive = false;
-};
 
-enum CellState
-{
-	EMPTY,
-	FLUID,
-	WALL
-};
 
 struct FluidCube {
 	int size;
@@ -77,8 +65,6 @@ struct FluidCube {
 	float *Vx0;
 	float *Vy0;
 
-	Particle *particles;
-	CellState *cellStates;
 };
 typedef struct FluidCube FluidCube;
 
@@ -170,9 +156,7 @@ FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt)
 	fluidCube->Vx0 = new float[(N + 2) * (N + 2)]();
 	fluidCube->Vy0 = new float[(N + 2) * (N + 2)]();
 
-	//Bens stuff
-	fluidCube->cellStates = new CellState[(N + 2) * (N + 2)]();
-	fluidCube->particles = new Particle[N*N * 2]();
+
 
 	return fluidCube;
 }
@@ -524,8 +508,6 @@ void fluidCubeTimeStep(FluidCube *fluidCube) {
 	float *Vy0 = fluidCube->Vy0;
 	float *s = fluidCube->source; // density of previous step
 	float *density = fluidCube->density; // density of current step
-	Particle* particles = fluidCube->particles;
-	CellState *cellStates = fluidCube->cellStates;
 
 	//Velocity step
 	add_source(N, Vx, Vx0, dt); //compute velocity for X
