@@ -812,6 +812,7 @@ void initDisplayHelp() {
 	cout << "'Left Shift' to add 10,000,000 density at mouse position." << endl;
 	cout << "'A' to add (-100, 0) velocity at the mouse position" << endl;
 	cout << "'D' to add (100, 0) velocity at the mouse position" << endl;
+	cout << "'B' to add one new rigid body at the mouse position" << endl;
 	cout << "'Space' to clear simulation" << endl;
 	cout << "'Return' to pause and resume simulation" << endl;
 	cout << "'Esc' to quit simulation" << endl << endl;
@@ -973,6 +974,8 @@ int main()
 					//Add a circle body at the mouse position
 				case SDLK_b:;
 					bodies.push_back(Circle{ glm::vec2((float)mouseGridPosiX / GRID_SIZE, (float)mouseGridPosiY / GRID_SIZE), 0.01f, glm::vec2(0) });
+					cout << "Successfully added 1 new rigid body: " << endl;
+					cout << lineBreak << endl << endl;
 					break;
                    // If 'W' is pressed insert an obstacle at mouse point
 				case SDLK_w:
@@ -1000,6 +1003,8 @@ int main()
 					//Pause & Resume Simulation by pressing 'Return'
 				case SDLK_RETURN:
 					runSim = !runSim;
+					cout << "Successfully paused/restarted the simulation: " << endl;
+					cout << lineBreak << endl << endl;
 					break;
 				   //Exit Simulation by pressing Esc
 				case SDLK_ESCAPE:
@@ -1010,20 +1015,13 @@ int main()
 		}
 
 		//Release Dam Effect continuously
-		if (running)
+		if (running && runSim == true)
 		{
 				for (int j = 1; j <= GRID_SIZE; j++) {
 					fluidCubeAddVelocity(fluidCube, 1, j, 1, 0);
 					fluidCubeAddDensity(fluidCube, 1, j, 25);
-				}
+				} fluidCubeTimeStep(fluidCube);
 		}
-
-		//Calls the TimeStep function for fluidCube
-		if (runSim == true) {
-			fluidCubeTimeStep(fluidCube);
-		}
-
-
 
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
