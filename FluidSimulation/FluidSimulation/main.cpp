@@ -970,7 +970,11 @@ int main()
 					initDisplayHelp();
 					sdlEvent.key.repeat = 1;
 					break;
-					// If 'W' is pressed insert an obstacle at mouse point
+					//Add a circle body at the mouse position
+				case SDLK_b:;
+					bodies.push_back(Circle{ glm::vec2((float)mouseGridPosiX / GRID_SIZE, (float)mouseGridPosiY / GRID_SIZE), 0.01f, glm::vec2(0) });
+					break;
+                   // If 'W' is pressed insert an obstacle at mouse point
 				case SDLK_w:
 					addObstacle(mouseGridPosiX, mouseGridPosiY);
 					addObstacle(mouseGridPosiX, mouseGridPosiY + 1);
@@ -997,12 +1001,7 @@ int main()
 				case SDLK_RETURN:
 					runSim = !runSim;
 					break;
-					//Add a circle body at the mouse position
-				case SDLK_b:;
-					bodies.push_back(Circle{ glm::vec2((float)mouseGridPosiX / GRID_SIZE, (float)mouseGridPosiY / GRID_SIZE), 0.01f, glm::vec2(0) });
-					break;
-
-					//Exit Simulation by pressing Esc
+				   //Exit Simulation by pressing Esc
 				case SDLK_ESCAPE:
 					running = false;
 					break;
@@ -1010,25 +1009,13 @@ int main()
 			}
 		}
 
-
-		//Release Dam Effect (In Intervals)
+		//Release Dam Effect continuously
 		if (running)
 		{
-			if (currentFluid >= totalFluid) {
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					fluidCubeAddVelocity(fluidCube, 5, 5, 0.1, 0);
-					fluidCubeAddVelocity(fluidCube, 5, 10, 10, 0);
-					fluidCubeAddVelocity(fluidCube, 5, 95, 10, 0);
-					fluidCubeAddVelocity(fluidCube, 5, 90, 10, 0);
-					fluidCubeAddDensity(fluidCube, 5, j, 10000);
-					fluidCubeAddDensity(fluidCube, 5, j, 10000);
-					fluidCubeAddDensity(fluidCube, 5, j, 10000);
+					fluidCubeAddVelocity(fluidCube, 1, j, 1, 0);
+					fluidCubeAddDensity(fluidCube, 1, j, 25);
 				}
-				currentFluid -= 50;
-			}
-			else {
-				currentFluid += 0.1;
-			}
 		}
 
 		//Calls the TimeStep function for fluidCube
