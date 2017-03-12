@@ -997,7 +997,7 @@ int main()
 				case SDLK_RETURN:
 					runSim = !runSim;
 					break;
-
+					//Add a circle body at the mouse position
 				case SDLK_b:;
 					bodies.push_back(Circle{ glm::vec2((float)mouseGridPosiX / GRID_SIZE, (float)mouseGridPosiY / GRID_SIZE), 0.01f, glm::vec2(0) });
 					break;
