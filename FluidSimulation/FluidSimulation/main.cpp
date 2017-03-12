@@ -25,7 +25,7 @@ using namespace std;
 
 //Global Variables
 
-bool runSim;
+bool runSim = true;
 
 //Set aspect ratio (world cords)
 const static float ASPECT_RATIO = ((float)DISPLAY_SIZE_X / (float)DISPLAY_SIZE_Y);
@@ -46,81 +46,7 @@ int mousePosiX;
 int mousePosiY;
 int mousePosiZ;
 
-struct Circle
-{
-	glm::vec2 c;
-	float r;
-	glm::vec2 v;
 
-	void draw()
-	{
-		//glPointSize(50);
-		//glBegin(GL_POINTS);
-		//glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-		//glVertex2f(c.x * GRID_SIZE * CELL_SIZE_X, c.y *GRID_SIZE * CELL_SIZE_Y);
-		const int NPOINTS = 24;
-		const float TWOPI = 2 * 3.14159268;
-		const float STEP = TWOPI / NPOINTS;
-		glBegin(GL_LINE_LOOP);
-		for (float angle = 0; angle < TWOPI; angle += STEP)
-		{
-			glVertex2f(c.x * GRID_SIZE * CELL_SIZE_X + r * GRID_SIZE * CELL_SIZE_X * cos(angle), c.y * GRID_SIZE * CELL_SIZE_Y + r * GRID_SIZE * CELL_SIZE_Y * sin(angle));
-		}
-		glEnd();
-	}
-};
-std::vector<Circle> bodies;
-
-void updateRigidBody(int N, float* Vx, float* Vy, Circle& circle, float dt)
-{
-	int x = circle.c.x*N;
-	int y = circle.c.y*N;
-	circle.v = glm::vec2(Vx[IX(x, y)], Vy[IX(x, y)]);
-	circle.c += circle.v * dt;
-}
-
-void checkBodyCollisions(int N)
-{
-	float h = 1.0f / N;
-	Circle c1, c2;
-	//Collisions between bodies
-	for (size_t i = 0; i < bodies.size(); i++)
-	{
-		c1 = bodies[i];
-		for (size_t j = i+1; j < bodies.size(); j++)
-		{
-
-			c2 = bodies[j];
-			float d = glm::length(c2.c - c1.c);
-			float r = c1.r + c2.r;
-			if (d < r)
-			{
-				glm::vec2 axis = c2.c - c1.c;
-				axis = glm::normalize(axis);
-				bodies[i].c += axis * ((d-r) * 0.5f);
-				bodies[j].c -= axis * ((d - r) * 0.5f);
-				d = glm::length(c2.c - c1.c);
-				d = d;
-			}
-		}
-		if (c1.c.x < h + c1.r) 
-		{ 
-			bodies[i].c.x = h + c1.r;
-		}
-		if (c1.c.x > 1 - h - c1.r) 
-		{
-			bodies[i].c.x = 1 - h - c1.r;
-		}
-		if (c1.c.y < h + c1.r) 
-		{
-			bodies[i].c.y = h + c1.r;
-		}
-		if (c1.c.y > 1 - h - c1.r)
-		{ 
-			bodies[i].c.y = 1 - h - c1.r;
-		}
-	}
-}
 
 struct FluidCube {
 	int size;
@@ -208,7 +134,97 @@ struct ObstacleBlock {
 };
 ObstacleBlock obstacles = ObstacleBlock();
 
+//A 2D representation of a Circle containing a centre position, radius and velocity
+struct Circle
+{
+	glm::vec2 c;
+	float r;
+	glm::vec2 v;
 
+	void draw()
+	{
+		const int NPOINTS = 24;
+		const float TWOPI = 2 * 3.14159268;
+		const float STEP = TWOPI / NPOINTS;
+		glBegin(GL_LINE_LOOP);
+		for (float angle = 0; angle < TWOPI; angle += STEP)
+		{
+			glVertex2f(c.x * GRID_SIZE * CELL_SIZE_X + r * GRID_SIZE * CELL_SIZE_X * cos(angle), c.y * GRID_SIZE * CELL_SIZE_Y + r * GRID_SIZE * CELL_SIZE_Y * sin(angle));
+		}
+		glEnd();
+	}
+};
+std::vector<Circle> bodies;
+
+//Updates the position of a rigid body based on the velocity at it's centre location
+void updateRigidBody(int N, float* Vx, float* Vy, Circle& circle, float dt)
+{
+	int x = circle.c.x*N;
+	int y = circle.c.y*N;
+	circle.v = glm::vec2(Vx[IX(x, y)], Vy[IX(x, y)]);
+	circle.c += circle.v * dt;
+}
+
+void checkBodyCollisions(int N)
+{
+	//the width of a single cell
+	float h = 1.0f / N;
+	Circle c1, c2;
+	//Collisions between bodies
+	for (size_t i = 0; i < bodies.size(); i++)
+	{
+		c1 = bodies[i];
+		for (size_t j = i + 1; j < bodies.size(); j++)
+		{
+
+			c2 = bodies[j];
+			float d = glm::length(c2.c - c1.c);
+			float r = c1.r + c2.r;
+			if (d < r)
+			{
+				glm::vec2 axis = c2.c - c1.c;
+				axis = glm::normalize(axis);
+				bodies[i].c += axis * ((d - r) * 0.5f);
+				bodies[j].c -= axis * ((d - r) * 0.5f);
+
+			}
+		}
+		if (c1.c.x < h + c1.r)
+		{
+			bodies[i].c.x = h + c1.r;
+		}
+		if (c1.c.x > 1 - h - c1.r)
+		{
+			bodies[i].c.x = 1 - h - c1.r;
+		}
+		if (c1.c.y < h + c1.r)
+		{
+			bodies[i].c.y = h + c1.r;
+		}
+		if (c1.c.y > 1 - h - c1.r)
+		{
+			bodies[i].c.y = 1 - h - c1.r;
+		}
+
+		//Check collisions between the current body c1 and the simulation obstacles
+		ObstacleList* current = obstacles.list;
+		while (current != nullptr)
+		{
+			//Here we treat the obstacle as a circle body at the location of the obstacle, with a radius of 0.5h
+			glm::vec2 obsP((float)current->obstacle.x / GRID_SIZE, (float)current->obstacle.y / GRID_SIZE);
+			float d1 = glm::length(obsP - bodies[i].c);
+			float r1 = c1.r + 0.5f*h;
+			if (d1 < r1)
+			{
+				glm::vec2 axis = obsP - bodies[i].c;
+				axis = glm::normalize(axis);
+				bodies[i].c += axis * ((d1 - r1) * 1.001f);
+			}
+
+			current = current->next;
+		}
+	}
+}
 
 FluidCube *FluidCubeCreate(int size, float diffusion, float viscosity, float dt) {
 	FluidCube *fluidCube = new FluidCube;
@@ -298,22 +314,7 @@ static void set_bnd(int b, float *x, int N, int type) {
 		ObstacleList* current = obstacles.list;
 
 		while (current != nullptr) {
-
-			/*X Axis*/
-			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x + 1, current->obstacle.y)] : x[IX(current->obstacle.x + 1, current->obstacle.y)];
-			x[IX(current->obstacle.x + 1, current->obstacle.y)] = current->obstacle.b == 1 ? -x[IX(current->obstacle.x, current->obstacle.y)] : x[IX(current->obstacle.x, current->obstacle.y)];
-
-			/*Y Axis*/
-			x[IX(current->obstacle.x, current->obstacle.y)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y + 1)] : x[IX(current->obstacle.x, current->obstacle.y + 1)];
-			x[IX(current->obstacle.x, current->obstacle.y + 1)] = current->obstacle.b == 2 ? -x[IX(current->obstacle.x, current->obstacle.y)] : x[IX(current->obstacle.x, current->obstacle.y)];
-
-			/*X Axis*/
 			x[IX(current->obstacle.x, current->obstacle.y)] = 0;
-			x[IX(current->obstacle.x + 1, current->obstacle.y)] = 0;
-
-			/*Y Axis*/
-			x[IX(current->obstacle.x, current->obstacle.y)] = 0;
-			x[IX(current->obstacle.x, current->obstacle.y + 1)] = 0;
 			current = current->next;
 		}
 	}
@@ -1008,7 +1009,7 @@ int main()
 				}
 			}
 		}
-		const Uint8 *keys = SDL_GetKeyboardState(NULL);
+
 
 		//Release Dam Effect (In Intervals)
 		if (running)
