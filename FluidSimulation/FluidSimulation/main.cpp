@@ -1,4 +1,4 @@
-#include <glm.hpp>
+#include <glm/glm.hpp>
 #include <SDL.h>
 #include <math.h>
 #include <GL\glew.h>
@@ -893,7 +893,7 @@ int main()
 	glEnable(GL_BLEND);
 
 	/* fluidCubeCreate(Size, Diffusion Amount, Viscosity Amount, Delta Time */
-	FluidCube *fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.1f);	//Create Fluid Cube 
+	FluidCube *fluidCube = FluidCubeCreate(GRID_SIZE, 0.0001f, 0.001f, 0.05f);	//Create Fluid Cube 
 
 	float totalFluid = 5000;
 	float currentFluid = totalFluid;
@@ -1020,8 +1020,8 @@ int main()
 		if (running && runSim == true)
 		{
 				for (int j = 1; j <= GRID_SIZE; j++) {
-					fluidCubeAddVelocity(fluidCube, 1, j, 1, 0);
-					fluidCubeAddDensity(fluidCube, 1, j, 25);
+					fluidCubeAddVelocity(fluidCube, 1, j, 3, 0);
+					fluidCubeAddDensity(fluidCube, 1, j, 20);
 				} fluidCubeTimeStep(fluidCube);
 		}
 
