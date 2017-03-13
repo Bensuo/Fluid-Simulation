@@ -1,4 +1,4 @@
-#include <glm/glm.hpp>
+#include <glm.hpp>
 #include <SDL.h>
 #include <math.h>
 #include <GL\glew.h>
@@ -812,7 +812,7 @@ void initDisplayHelp() {
 	cout << "'Left Shift' to add 10,000,000 density at mouse position." << endl;
 	cout << "'A' to add (-100, 0) velocity at the mouse position" << endl;
 	cout << "'D' to add (100, 0) velocity at the mouse position" << endl;
-	cout << "'B' to add one new rigid body at the mouse position" << endl;
+	cout << "'S' to add one new rigid body at the mouse position" << endl;
 	cout << "'Space' to clear simulation" << endl;
 	cout << "'Return' to pause and resume simulation" << endl;
 	cout << "'Esc' to quit simulation" << endl << endl;
@@ -929,10 +929,14 @@ int main()
 					//If 'A' is pressed velocity is added to the left of the pointer
 				case SDLK_a:
 					fluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, -100.0f, 0);
+					cout << "Velocity amount added: -100" << endl;
+					cout << lineBreak << endl << endl;
 					break;
 					//IF 'D' is pressed velocity is added to the right of the pointer
 				case SDLK_d:
 					fluidCubeAddVelocity(fluidCube, mouseGridPosiX, mouseGridPosiY, 100.0f, 0);
+					cout << "Velocity amount added: 100" << endl;
+					cout << lineBreak << endl << endl;
 					break;
 					//If 'Left Ctrl' is pressed then add density to area (1,000,000)
 				case SDLK_LCTRL:
@@ -948,11 +952,9 @@ int main()
 				case SDLK_LSHIFT:
 					densityAdded = false;
 					fluidCubeAddDensity(fluidCube, mouseGridPosiX, mouseGridPosiY, 10000000);
-					cout << "Density Added Status: True" << endl;
 					sdlEvent.key.repeat = 1;
 					cout << "Density amount added: 10,000,000" << endl;
 					densityAdded = true;
-					cout << "Density Added Status: False" << endl;
 					cout << lineBreak << endl << endl;
 					break;
 					//If 'Space' is pressed then clear data from simulation
@@ -972,7 +974,7 @@ int main()
 					sdlEvent.key.repeat = 1;
 					break;
 					//Add a circle body at the mouse position
-				case SDLK_b:;
+				case SDLK_s:;
 					bodies.push_back(Circle{ glm::vec2((float)mouseGridPosiX / GRID_SIZE, (float)mouseGridPosiY / GRID_SIZE), 0.01f, glm::vec2(0) });
 					cout << "Successfully added 1 new rigid body: " << endl;
 					cout << lineBreak << endl << endl;
