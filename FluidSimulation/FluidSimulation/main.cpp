@@ -10,7 +10,7 @@
 #include <vector>
 using namespace std;
 
-#define IX(x,y) ((x)+(N+2)*(y)) 
+#define IX(x,y) ((x)+(N+2)*(y)) //Derived from: Jos Stam, 2003, Real-time Fluid Dynamics for Games
 
 /*WARNING: Do NOT change the CELL_SIZE and GRID_SIZE upwards unless you have a beast of a computer*/
 
@@ -47,7 +47,7 @@ int mousePosiY;
 int mousePosiZ;
 
 
-
+//Derived from: Michael Ash, 2006, Fluid Simulation for Dummies
 struct FluidCube {
 	int size;
 	float dt; //Delta Time (Step-Time)
@@ -354,6 +354,7 @@ diff = viscocity
 dt = deltaTime / Timestep
 
 diffuse(N, 0, s, density, diff, dt); //computes diffusion for next step in grid
+Derived from: Jos Stam, 2003, Real-time Fluid Dynamics for Games
 */
 void diffuse(int N, int b, float *x, float *x0, float diff, float dt) {
 	int i, j, k;
@@ -391,7 +392,7 @@ advection definition: the transfer of heat or matter by the flow of a fluid,
 especially horizontally in the atmosphere or the sea.
 
 advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step.
-
+Derived from: Jos Stam, 2003, Real-time Fluid Dynamics for Games
 */
 void advect(int N, int b, float *d, float *d0, float *u, float*v, float dt) {
 	int i, j, i0, j0, i1, j1;
@@ -460,7 +461,7 @@ v = array previous velocity Y
 p = array of current velocity X / possibly pressure as well
 div = array  of current velocity Y
 h = square root of cell (half a cell)
-
+Derived from: Jos Stam, 2003, Real-time Fluid Dynamics for Games
 */
 
 
@@ -571,7 +572,9 @@ void clearData(int N, float *s, float *Vx, float *Vy, float *Vx0, float *Vy0, fl
 	bodies.clear();
 }
 
-/* ------------- fluidCube Time Step ------------- */
+/* ------------- fluidCube Time Step ------------- 
+Derived from: Michael Ash, 2006, Fluid Simulation for Dummies
+*/
 
 void fluidCubeTimeStep(FluidCube *fluidCube) {
 	int N = fluidCube->size;
