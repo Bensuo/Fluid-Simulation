@@ -1,3 +1,17 @@
+/*
+
+Name: Group 1
+
+Student ID: B0029472, B00307589, B00287948
+
+I declare that the following code was produced by Lars Anthony Palm, Benjamin Tracy, Thomas Mackrell as a group assignment for the IPM module and that this is our own work.
+
+I am aware of the penalties incurred by submitting in full or in part work that is not our own and that was developed by third parties that are not appropriately acknowledged.
+
+*/
+
+
+
 #include <glm/glm.hpp>
 #include <SDL.h>
 #include <math.h>
@@ -601,7 +615,7 @@ void fluidCubeTimeStep(FluidCube *fluidCube) {
 
 	project(N, Vx, Vy, Vx0, Vy0); //Set boundry as a square/cube and computes reaction of velocity if the boundry is hit.
 
-								  //Density step
+	//Density step
 	add_source(N, density, s, dt); //compute density into grid
 	diffuse(N, 0, s, density, diff, dt); //computes diffusion for next step in grid
 	advect(N, 0, density, s, Vx, Vy, dt); //computes advection of current density for next step. 
@@ -909,7 +923,7 @@ int main()
 	SDL_Event sdlEvent;  // variable to detect SDL events
 	while (running) {	// the event loop
 
-						//Get density & velocity at mouse posi and cout + get mouse posi in world cords
+		//Get density & velocity at mouse posi and cout + get mouse posi in world cords
 		SDL_GetMouseState(&mousePosiX, &mousePosiY);
 		int gridX = (float)(((GRID_SIZE) / (float)DISPLAY_SIZE_X) * mousePosiX);
 		int gridY = (float)(((GRID_SIZE) / (float)DISPLAY_SIZE_Y) * mousePosiY);
